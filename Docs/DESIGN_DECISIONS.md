@@ -343,6 +343,28 @@ curves live under the track"; these rules carried over unchanged.)
 - The palette colour replaces `params.color` (and any colour envelope) while a
   palette is in use; the Colour row is hidden to make that obvious.
 
+### ILDA imports live in the show file (Stage 3b, v0.9.0)
+- **Decision:** an imported `.ild` is decoded once and stored **inside the show
+  JSON** as compact base64 (8 bytes/point), not as a path to the original file.
+  A show stays one self-contained file that opens on another PC, and undo
+  (whole-JSON snapshots) carries imports for free. Decoded strokes are cached
+  per data string so undo/redo doesn't re-decode.
+- **Colours tint, not replace:** imported points keep their own colours and the
+  cue colour multiplies them; new cues on an imported pattern start white. That
+  keeps palettes/envelopes useful on imported art without destroying it.
+- **Removal is guarded:** an imported pattern used by any cue can't be removed
+  (the toast says how many use it) — deleting it would leave cues drawing
+  nothing. Unused ones remove with undo.
+- **Limits** (20 MB, 600 frames, 4000 points/frame) keep the show file and the
+  renderer (≤ 2048 segments) sane; what got cut is reported.
+- **Black = blank:** many exporters blank by colour instead of the status bit,
+  so black points are treated as blanked.
+
+### Text uses a 14-segment font (Stage 3b)
+- Laser text is drawn as straight segments (like a scanner font), not
+  outlines from a system font: no font files, no canvas text measuring, fast
+  to draw, and it looks like laser lettering. Up to 12 characters, upper case.
+
 ---
 
 ## Project persistence & undo

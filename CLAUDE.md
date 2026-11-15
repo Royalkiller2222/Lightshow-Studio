@@ -76,7 +76,8 @@ Show engine (timeline cues)            External console
   curve lanes under laser tracks, zoom/scroll) and `CueInspector` (edits the
   selected cue). Cues belong to tracks; `engine.syncTracks()` derives each
   cue's priority (`lane`) and fixture target from its track.
-- **`src/laser/`** — vector `patterns.js`, `envelopes.js` (parameter spec + pure
+- **`src/laser/`** — vector `patterns.js` (+ the imported-pattern registry),
+  `ilda.js` (ILDA .ild import, stored in the show file), `envelopes.js` (parameter spec + pure
   keyframe math), `palettes.js` (palettes + projector output defaults) and
   `LaserRig.js` (one projector's 3D beams + galvo preview; each Laser projector
   fixture owns one, plus a default one when the rig has none).
@@ -102,8 +103,8 @@ Two tracks, both user-approved:
 2. **The laser pivot** — a **Pangolin BEYOND-style laser-show designer**. The
    user runs **primarily laser shows**. Laser Stage 1 (patterns + values) and
    Stage 2 (keyframe envelopes) are done; Stage 3 is split: **3a projectors +
-   palettes ✔ (v0.8.0)**, **3b more patterns + ILDA import (next)**, 3c an
-   audio-reactive Auto pad in Live. Then imports (QLC+, xLights, MVR), and a
+   palettes ✔ (v0.8.0)**, **3b more patterns + ILDA import ✔ (v0.9.0)**,
+   **3c an audio-reactive Auto pad in Live (next)**. Then imports (QLC+, xLights, MVR), and a
    final user-documentation phase. Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**

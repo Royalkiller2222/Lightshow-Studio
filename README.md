@@ -44,7 +44,9 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
   right. Laser cues have BEYOND-style Key Effects — size, rotation, position,
   colour, brightness and more — each one keyframeable with the ◆ buttons;
   open a laser track to shape the curves right under the music. Laser colours
-  can come from palettes, cycling on the beat. Each laser track plays on all
+  can come from palettes, cycling on the beat. 25 patterns in groups include
+  a Text pattern, and you can import ILDA `.ild` files from other laser
+  software (with their colours and animation). Each laser track plays on all
   your Laser projectors or just the ones you pick, and each projector has its
   own size, position, flip and brightness limit. Tracks have
   mute / solo; markers (M) name the song's sections; Ctrl+wheel zooms.

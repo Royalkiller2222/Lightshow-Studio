@@ -17,7 +17,9 @@ import { EFFECTS } from '../show/effects.js';
 import { SHAPES, DIVISIONS, FANS } from '../show/waveforms.js';
 import { lookName } from '../show/ShowEngine.js';
 import { SLOTS, slotOf, makeLayer, setLayer, removeSlot } from '../show/looks.js';
-import { PATTERNS } from '../laser/patterns.js';
+import { allPatterns, patternByKey, PATTERN_GROUPS, cleanText, TEXT_MAX, DEFAULT_TEXT, frameCount, onPatternsChanged } from '../laser/patterns.js';
+
+const FPS_CHOICES = [10, 12, 15, 20, 24, 25, 30, 50, 60];
 import { LASER_PARAMS, PARAM_BY_KEY, EASES, isAnimated, valueAt, setKey, clearKeys } from '../laser/envelopes.js';
 import { CYCLE_RATES, MAX_COLORS, defaultPalettes, newPaletteId, paletteColor } from '../laser/palettes.js';
 import { icon } from '../ui/icons.js';
@@ -95,7 +97,6 @@ export class CueInspector {
   }
 
   _laserHtml() {
-    const pats = PATTERNS.map((p) => `<option value="${p.key}">${esc(p.label)}</option>`).join('');
     const eases = EASES.map((e) => `<option value="${e.key}">${esc(e.label)}</option>`).join('');
     const rowFor = (p) => {
       const input = p.kind === 'color'
@@ -109,7 +110,8 @@ export class CueInspector {
     };
     // "Colour from" (own colour / palette colour / palette cycle) sits just
     // above the Colour row; it's re-rendered per cue by _renderPalette().
-    const basic = LASER_PARAMS.filter((p) => !p.adv).map((p) => (p.key === 'color' ? '<div class="pal-box" data-role="pal"></div>' : '') + rowFor(p)).join('');
+    const tintHint = '<p class="muted small" style="margin:2px 0 6px 30px" data-role="tint-hint" hidden>This pattern has its own colours; the colour above tints them (white keeps them).</p>';
+    const basic = LASER_PARAMS.filter((p) => !p.adv).map((p) => (p.key === 'color' ? '<div class="pal-box" data-role="pal"></div>' : '') + rowFor(p) + (p.key === 'color' ? tintHint : '')).join('');
     const adv = LASER_PARAMS.filter((p) => p.adv).map(rowFor).join('');
     return `
       <div data-view="laser" hidden>
@@ -119,7 +121,9 @@ export class CueInspector {
         </div>
         <div class="sec">
           ${this._trackRow()}
-          <label class="prop"><span class="name">Pattern</span><span class="ctl"><select data-lmeta="pattern">${pats}</select></span></label>
+          <label class="prop"><span class="name">Pattern</span><span class="ctl"><select data-lmeta="pattern"></select></span></label>
+          <label class="prop" data-role="txt-row" hidden><span class="name">Text</span><span class="ctl"><input type="text" class="lmeta-text" maxlength="${TEXT_MAX}" data-lmeta="text" spellcheck="false" aria-label="Text to draw" placeholder="${DEFAULT_TEXT}" /><span class="muted small">A–Z, 0–9</span></span></label>
+          <label class="prop" data-role="fps-row" hidden><span class="name">Frame rate</span><span class="ctl"><select data-lmeta="fps" title="How fast the file's frames play">${FPS_CHOICES.map((n) => `<option value="${n}">${n} fps</option>`).join('')}</select><span class="muted small" data-role="frames"></span></span></label>
           <label class="prop"><span class="name">Length</span><span class="ctl"><input type="number" min="0.25" step="0.25" data-lmeta="duration" style="width:80px" /><span class="muted small">seconds</span></span></label>
         </div>
         <div class="sec">
@@ -177,6 +181,8 @@ export class CueInspector {
     // Don't fight the user: skip live updates on the slider being dragged.
     el.addEventListener('pointerdown', (e) => { if (e.target.dataset.lpv) this._sliderHeld = e.target.dataset.lpv; });
     window.addEventListener('pointerup', () => { this._sliderHeld = null; });
+    // an import / removal changes the Pattern menu
+    onPatternsChanged(() => { if (this.cue && this.cue.kind === 'laser') this._laserRefresh(this.cue); });
   }
 
   // ---------------------------------------------------------------- showing
@@ -310,15 +316,47 @@ export class CueInspector {
   }
 
   _laserRefresh(cue) {
+    this._patternOptions(cue);
     this.$('[data-lmeta="pattern"]').value = cue.pattern;
     this.$('[data-lmeta="duration"]').value = +cue.duration.toFixed(3);
     this.$('[data-role="autokey"]').checked = this.autoKey;
-    const pat = PATTERNS.find((p) => p.key === cue.pattern);
-    this.$('[data-role="l-title"]').textContent = pat ? pat.label : cue.pattern;
+    this._patternRows(cue);
     const u = this._cueU(cue);
     for (const spec of LASER_PARAMS) this._showParam(spec, valueAt(cue, spec.key, u), true);
     this._markRows(cue);
     this._renderPalette(cue);
+  }
+
+  /** The Pattern menu, grouped like the library; rebuilt when imports change. */
+  _patternOptions(cue) {
+    const pats = allPatterns();
+    const sig = pats.map((p) => p.key + ':' + p.label).join('|') + (patternByKey(cue.pattern) ? '' : '#' + cue.pattern);
+    if (sig === this._patSig) return;
+    this._patSig = sig;
+    const sel = this.$('[data-lmeta="pattern"]');
+    sel.innerHTML = PATTERN_GROUPS.map((g) => {
+      const list = pats.filter((p) => (p.group || 'graphics') === g.key);
+      return list.length ? `<optgroup label="${esc(g.label)}">${list.map((p) => `<option value="${esc(p.key)}">${esc(p.label)}</option>`).join('')}</optgroup>` : '';
+    }).join('') + (patternByKey(cue.pattern) ? '' : `<option value="${esc(cue.pattern)}">${esc(cue.pattern)} (missing)</option>`);
+  }
+
+  /** Title, Text row (Text pattern), Frame rate row (animated import), tint hint. */
+  _patternRows(cue) {
+    const pat = patternByKey(cue.pattern);
+    this.$('[data-role="l-title"]').textContent = pat ? (pat.text ? `Text: ${cleanText(cue.text ?? DEFAULT_TEXT) || '—'}` : pat.label) : `${cue.pattern} (missing)`;
+    const txt = this.$('[data-lmeta="text"]');
+    this.$('[data-role="txt-row"]').hidden = !pat?.text;
+    if (pat?.text && document.activeElement !== txt) txt.value = cue.text ?? DEFAULT_TEXT;
+    const n = pat ? frameCount(pat) : 1;
+    this.$('[data-role="fps-row"]').hidden = n < 2;
+    if (n > 1) {
+      const fps = cue.fps || pat.fps || 30;
+      const sel = this.$('[data-lmeta="fps"]');
+      if (![...sel.options].some((o) => +o.value === fps)) sel.insertAdjacentHTML('beforeend', `<option value="${fps}">${fps} fps</option>`);
+      sel.value = String(fps);
+      this.$('[data-role="frames"]').textContent = `${n} frames · ${(n / fps).toFixed(1)} s loop`;
+    }
+    this.$('[data-role="tint-hint"]').hidden = !pat?.colored || !!cue.colorRef;
   }
 
   // ---------------------------------------------------------- palette colour
@@ -468,9 +506,26 @@ export class CueInspector {
     if (el.dataset.pal) { this._onPaletteInput(el); return; }
     if (el.dataset.palCol) { this._onPaletteColor(el); return; }
     if (el.dataset.lmeta === 'pattern') {
+      const was = patternByKey(cue.pattern);
       cue.pattern = el.value;
-      const pat = PATTERNS.find((p) => p.key === cue.pattern);
-      this.$('[data-role="l-title"]').textContent = pat ? pat.label : cue.pattern;
+      const pat = patternByKey(cue.pattern);
+      // switching to a pattern with its own colours: start white so they show
+      if (pat?.colored && !was?.colored && !cue.colorRef && !isAnimated(cue, 'color')) {
+        cue.params.color = [1, 1, 1];
+        this._laserRefresh(cue);
+      } else this._patternRows(cue);
+      this.onChange();
+      return;
+    }
+    if (el.dataset.lmeta === 'text') {
+      cue.text = cleanText(el.value);
+      this._patternRows(cue);
+      this.onChange();
+      return;
+    }
+    if (el.dataset.lmeta === 'fps') {
+      cue.fps = Math.max(1, Math.min(120, parseInt(el.value, 10) || 30));
+      this._patternRows(cue);
       this.onChange();
       return;
     }

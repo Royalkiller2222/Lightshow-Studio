@@ -2,7 +2,8 @@
 //
 // A project is a JSON snapshot: room, fixtures (type/patch/position/rotation/
 // mirror), timeline tracks, cues (fixture and laser, incl. keyframe envelopes),
-// section markers, laser palettes and settings. Version-1 files (anonymous
+// section markers, laser palettes, imported ILDA patterns (base64, so a show
+// stays one file) and settings. Version-1 files (anonymous
 // lanes, no tracks) are converted on open by tracksFromLanes(); older files
 // without projector targets / palettes open with "all projectors" and the
 // preset palettes.
@@ -15,11 +16,14 @@ import { loadAnim } from '../laser/envelopes.js';
 import { EFFECT_BY_KEY } from '../show/effects.js';
 import { GROUPS } from '../show/ShowEngine.js';
 import { makeLayer } from '../show/looks.js';
+import { importedPatterns, setImported, cleanText } from '../laser/patterns.js';
+import { serializeImported, loadImported, clampFps } from '../laser/ilda.js';
 import { defaultPalettes, normalizePalettes, normalizeColorRef, normalizeOutput, isDefaultOutput } from '../laser/palettes.js';
 
+// 5: imported ILDA patterns, cue text (Text pattern) + frame rate
 // 4: laser projectors (output settings, track targets) + palettes
 // 3: fixture cues are looks (layers) · 2: named tracks + markers · 1: anonymous lanes
-export const PROJECT_VERSION = 4;
+export const PROJECT_VERSION = 5;
 
 const ATTR_NAME = { intensity: 'Intensity', color: 'Colour', position: 'Movement' };
 
@@ -92,6 +96,8 @@ export function serializeProject(ctx) {
       // laser tracks: null = every projector, else fixture indices
       target: t.target ? t.target.filter((f) => idx.has(f)).map((f) => idx.get(f)) : null,
     })),
+    // imported ILDA patterns travel inside the show file
+    patterns: importedPatterns().map(serializeImported),
     palettes: engine.palettes.map((p) => ({ id: p.id, name: p.name, colors: p.colors.map((c) => [...c]) })),
     cues: engine.cues.map((c) => (c.kind === 'laser'
       ? {
@@ -100,6 +106,8 @@ export function serializeProject(ctx) {
         params: { ...c.params, color: [...c.params.color] },
         anim: c.anim ? structuredClone(c.anim) : undefined, // laser keyframe envelopes
         colorRef: c.colorRef ? { ...c.colorRef } : undefined, // palette colour
+        text: c.text != null ? c.text : undefined, // Text pattern
+        fps: c.fps || undefined, // animated (imported) pattern frame rate
       }
       : {
         kind: 'fixture', name: c.name, groupId: c.groupId,
@@ -138,6 +146,7 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
   });
 
   engine.palettes = normalizePalettes(data.palettes) ?? defaultPalettes();
+  setImported(loadImported(data.patterns));
 
   // Tracks: saved ones (v2), or derived from the old lanes (v1).
   const cues = data.cues || [];
@@ -180,7 +189,11 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
     if (c.kind === 'laser' && c.params) cue.params = { ...cue.params, ...c.params, color: [...(c.params.color || cue.params.color)] };
     const anim = c.kind === 'laser' ? loadAnim(c.anim) : undefined;
     if (anim) cue.anim = anim;
-    if (c.kind === 'laser') cue.colorRef = normalizeColorRef(c.colorRef, engine.palettes);
+    if (c.kind === 'laser') {
+      cue.colorRef = normalizeColorRef(c.colorRef, engine.palettes);
+      if (typeof c.text === 'string') cue.text = cleanText(c.text);
+      if (Number.isFinite(c.fps)) cue.fps = clampFps(c.fps);
+    }
   });
   engine.syncTracks();
 

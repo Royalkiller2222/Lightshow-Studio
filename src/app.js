@@ -35,7 +35,8 @@ import { Transport } from './timeline/Transport.js';
 import { TimelinePanel } from './timeline/TimelinePanel.js';
 import { CueInspector, effectShortName } from './timeline/CueInspector.js';
 import { LaserRig } from './laser/LaserRig.js';
-import { PATTERNS } from './laser/patterns.js';
+import { allPatterns, addImported, removeImported, patternByKey } from './laser/patterns.js';
+import { importIlda, MAX_FILE_BYTES } from './laser/ilda.js';
 import { Rig } from './core/Rig.js';
 import { serializeProject, applyProject, History } from './core/project.js';
 import { Shell, WORKSPACES } from './ui/Shell.js';
@@ -240,6 +241,8 @@ new ContentLibrary(document.getElementById('lib-program'), {
   onAddPattern: (key) => timeline.addLaserCueAt(key),
   onAddEffect: (key) => timeline.addFixtureCueAt(key),
   onAddLook: (key) => timeline.addLookAt(key),
+  onImportIlda: () => importIldaFile(),
+  onRemovePattern: (key) => removeImportedPattern(key),
 });
 
 const patchSheet = new PatchSheet(document.getElementById('patchsheet'), {
@@ -474,6 +477,51 @@ projFile.addEventListener('change', async () => {
   }
 });
 
+// ---------- ILDA import (laser frames from other laser software) ----------
+// Imported patterns belong to the show: they're saved inside its file and
+// undo/redo like any edit (see project.js / ilda.js).
+const ildFile = document.createElement('input');
+ildFile.type = 'file';
+ildFile.accept = '.ild,.ilda';
+ildFile.multiple = true;
+ildFile.hidden = true;
+document.body.appendChild(ildFile);
+function importIldaFile() { ildFile.click(); }
+ildFile.addEventListener('change', async () => {
+  const files = [...ildFile.files];
+  ildFile.value = '';
+  const done = [];
+  for (const file of files) {
+    try {
+      if (file.size > MAX_FILE_BYTES) throw new Error(`it's over ${MAX_FILE_BYTES / 1048576} MB`);
+      const { pattern, notes } = importIlda(await file.arrayBuffer(), file.name);
+      addImported(pattern);
+      done.push(pattern);
+      const n = pattern.frames.length;
+      toast(`Imported "${pattern.label}": ${n} frame${n === 1 ? '' : 's'}. Find it under Laser patterns → Imported.${notes.length ? ` Note: ${notes.join('; ')}.` : ''}`, { kind: 'ok', ms: 6000 });
+    } catch (e) {
+      console.warn('ILDA import failed:', e);
+      toast(`Couldn't import "${file.name}": ${e.message}`, { kind: 'error', ms: 6000 });
+    }
+  }
+  if (done.length) {
+    shell.setWorkspace('program');
+    history.record();
+  }
+});
+function removeImportedPattern(key) {
+  const pat = patternByKey(key);
+  if (!pat) return;
+  const n = engine.patternUsers(key).length;
+  if (n) {
+    toast(`"${pat.label}" is used by ${n} laser cue${n === 1 ? '' : 's'}. Change or delete ${n === 1 ? 'it' : 'them'} first.`, { kind: 'error', ms: 5000 });
+    return;
+  }
+  removeImported(key);
+  history.record();
+  toast(`Removed "${pat.label}" from this show. Ctrl+Z brings it back.`, { kind: 'ok' });
+}
+
 // ---------- Commands (Ctrl+K) ----------
 function commands() {
   const list = [];
@@ -489,7 +537,8 @@ function commands() {
   add('Edit', 'Deselect', deselectAll, 'Esc');
   for (const w of WORKSPACES) add('Go to', `${w.label} workspace`, () => shell.setWorkspace(w.id), w.keys);
   for (const t of FIXTURE_TYPES) add('Add fixture', t.label, () => { shell.setWorkspace('build'); addFixture(t.key); });
-  for (const p of PATTERNS) add('Add laser cue', p.label, () => { shell.setWorkspace('program'); timeline.addLaserCueAt(p.key); });
+  add('File', 'Import an ILDA laser file…', importIldaFile);
+  for (const p of allPatterns()) add('Add laser cue', p.label, () => { shell.setWorkspace('program'); timeline.addLaserCueAt(p.key); });
   for (const l of LOOKS) add('Add look', l.name, () => { shell.setWorkspace('program'); timeline.addLookAt(l.key); });
   for (const e of EFFECTS) add('Add effect', effectShortName(e) + (e.attr === 'color' ? ' (colour)' : e.attr === 'position' ? ' (movement)' : ''), () => { shell.setWorkspace('program'); timeline.addFixtureCueAt(e.key); });
   add('Timeline', 'Add a marker at the playhead', () => { shell.setWorkspace('program'); timeline.addMarker(); }, 'M');

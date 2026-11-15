@@ -10,7 +10,7 @@
 // track and marker editing in the Inspector. All show data lives on the engine.
 
 import { GROUPS } from '../show/ShowEngine.js';
-import { PATTERNS } from '../laser/patterns.js';
+import { patternByKey, cleanText, DEFAULT_TEXT } from '../laser/patterns.js';
 import {
   LASER_PARAMS, PARAM_BY_KEY, KEY_EPS,
   keyTimes, isAnimated, valueAt, setKey, removeKey, sortKeys,
@@ -482,8 +482,8 @@ export class TimelinePanel {
     this._placeClip(el, cue);
     let label, keys = '';
     if (laser) {
-      const pat = PATTERNS.find((x) => x.key === cue.pattern);
-      label = pat ? pat.label : cue.pattern;
+      const pat = patternByKey(cue.pattern);
+      label = pat ? (pat.text ? `Text: ${cleanText(cue.text ?? DEFAULT_TEXT)}` : pat.label) : cue.pattern;
       keys = keyTimes(cue).map((t) => `<span class="tl-kf" style="left:${t * 100}%"></span>`).join('');
     } else {
       label = cue.name || 'Look';

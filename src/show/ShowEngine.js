@@ -7,7 +7,7 @@
 
 import { EFFECT_BY_KEY, EFFECTS, writeAttr, writeRGB } from './effects.js';
 import { makeLayer, normalizeLayers } from './looks.js';
-import { PATTERN_BY_KEY } from '../laser/patterns.js';
+import { patternByKey } from '../laser/patterns.js';
 import { resolveLaserParams } from '../laser/envelopes.js';
 import { defaultPalettes, paletteColor } from '../laser/palettes.js';
 
@@ -167,6 +167,8 @@ export class ShowEngine {
   /** A BEYOND-style laser cue: a vector pattern + the 7 laser parameters. */
   addLaserCue({ pattern = 'beam-fan', start = 0, duration = 4, lane = 0, track = null } = {}) {
     const cue = { id: _id++, kind: 'laser', pattern, start, duration, lane, track, params: laserParams(), colorRef: null };
+    // An imported (coloured) pattern starts white so the file's own colours show.
+    if (patternByKey(pattern)?.colored) cue.params.color = [1, 1, 1];
     this.cues.push(cue);
     if (track != null) this.syncTracks();
     return cue;
@@ -256,7 +258,7 @@ export class ShowEngine {
   }
 
   _drawCue(rig, out, cue, time, beat) {
-    const pat = cue && PATTERN_BY_KEY[cue.pattern];
+    const pat = cue && patternByKey(cue.pattern);
     const m = this.masters;
     if (!pat || m.blackout || m.dimmer <= 0) { rig.blank(); return; }
     const u = Math.min(1, Math.max(0, (time - cue.start) / (cue.duration || 1)));
@@ -266,8 +268,14 @@ export class ShowEngine {
       p = { ...p, brightness: (p.brightness ?? 1) * m.dimmer, size: (p.size ?? 1) * m.size };
       if (col) p.color = col;
     }
-    rig.show(pat, p, out);
+    // Animated imports play from the cue's start at its frame rate; the Text
+    // pattern draws the cue's text.
+    const frame = pat.frames ? Math.floor(Math.max(0, time - cue.start) * (cue.fps || pat.fps || 30)) : 0;
+    rig.show(pat, p, out, { frame, text: cue.text });
   }
+
+  /** Laser cues drawing pattern `key` (an imported pattern can't go while used). */
+  patternUsers(key) { return this.cues.filter((c) => c.kind === 'laser' && c.pattern === key); }
 
   // -------------------------------------------------------------- palettes
   paletteById(id) { return this.palettes.find((p) => p.id === id) || null; }

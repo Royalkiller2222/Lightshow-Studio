@@ -3,6 +3,46 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.9.0 — 2026-11-14
+
+Laser Stage 3b: a much bigger pattern library, a Text pattern, and import of
+ILDA laser files from other laser programs.
+
+**Install:** download `LightshowStudio-Setup-0.9.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### More patterns, in groups
+- **25 built-in patterns** (was 10). New: split fan, ray burst, cross, light
+  sheet, liquid sky, double tunnel, hexagon, star, heart, double wave, wave
+  stack, zigzag, figure 8, Lissajous and Text.
+- The Program library shows them in **groups**: Beams & sheets, Shapes,
+  Waves & curves, Graphics & text, and Imported. Click a group to fold it;
+  the app remembers which are open. Searching looks inside every group.
+- The inspector's pattern list uses the same groups.
+
+### Text pattern
+- Drag **Text** onto the timeline and type a word in the inspector (up to 12
+  characters: letters, numbers and simple punctuation). It's drawn in a
+  laser-style segment font, and the clip reads "Text: YOUR WORD".
+
+### ILDA import
+- **Import ILDA file…** (in the Imported group, or Ctrl+K) loads `.ild` files
+  exported by BEYOND, QuickShow, LaserOS and most other laser software.
+  Formats 0, 1, 2, 4 and 5 are read: 2D and 3D frames, palette and true colour.
+- Imported patterns keep **their own colours** and **animation**. The cue's
+  colour tints them; white leaves them unchanged. Set the **Frame rate** in the
+  inspector (it shows the frame count and loop length).
+- Imports are **saved inside the show file**, so a show stays one file. An
+  imported pattern that cues still use can't be removed (you're told how many
+  use it); removing an unused one can be undone with Ctrl+Z.
+- Limits: 20 MB per file, 600 frames, 4000 points per frame. Anything cut is
+  listed in the import message.
+
+### Under the hood
+- Show files are now **version 5** (adds the imported patterns and each cue's
+  text and frame rate). Older files open as before.
+
 ## v0.8.0 — 2026-11-14
 
 Laser Stage 3a: real laser projectors you can aim tracks at, per-projector

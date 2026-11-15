@@ -176,8 +176,16 @@ src/
     snap.js              snapTime (beat grid) / snapKeyU (half-beats + cue ends).
 
   laser/
-    patterns.js          Vector pattern library (strokes in -1..1 galvo space) +
-                         patternSegments(pattern, visiblePoints).
+    patterns.js          Vector pattern library (strokes in -1..1 galvo space),
+                         PATTERN_GROUPS, the Text font (14-segment), the
+                         imported-pattern registry (allPatterns, patternByKey,
+                         setImported/addImported/removeImported,
+                         onPatternsChanged) + patternSegments(pattern, visible,
+                         {text, frame}) and drawPatternThumb().
+    ilda.js              ILDA .ild reader (formats 0/1/2/4/5) -> frames of
+                         coloured strokes; compact base64 encode/decode for the
+                         show file; importIlda / serializeImported /
+                         loadImported. Pure data; Node-testable.
     envelopes.js         LASER_PARAMS (ranges/labels/formats — single source of
                          truth) + pure keyframe math: evalEnvelope, valueAt,
                          resolveLaserParams, setKey/removeKey/clearKeys,
@@ -241,8 +249,15 @@ LTP colour+position (see DESIGN_DECISIONS).
 `{ size, rotX, rotY, rotZ, posX, posY, color[3], brightness, points, scan }`
 (rotation in radians). Ranges/labels live in `LASER_PARAMS` (`envelopes.js`).
 
-- `pattern` → `patterns.js` (beam-fan, cone, tunnel, wave, square, triangle, grid,
-  lines, dots, spiral). Each is a list of **strokes** (polylines) in -1..1.
+- `pattern` → `patterns.js`: 25 built-ins `{key,label,group,strokes}` in four
+  groups, each a list of **strokes** (polylines) in -1..1. `text` (`text:true`)
+  draws the cue's `cue.text` in a 14-segment font. **Imported** ILDA patterns
+  (`group:'imported'`, `colored:true`) have `frames` (a stroke list per frame,
+  points `[x,y,r,g,b]`), `fps` and `data` (base64 of the frames); they live in
+  a module-level registry the show owns (`setImported` on load). The engine
+  picks `frame = floor((t − start)·(cue.fps || pat.fps))`; LaserRig writes
+  per-vertex colours, and the cue colour multiplies them (white = as drawn).
+  `engine.patternUsers(key)` guards removing a pattern cues still use.
 - `LaserRig.show(pattern, params)` transforms the frame: rotZ spins in-plane,
   size scales, pos offsets (independent of size), rotX/rotY tilt the frame plane
   in 3D, then places it at distance `D` in front of the projector. `points`
@@ -291,13 +306,14 @@ cue.anim = {
 
 ## Save/load shape (`core/project.js`)
 ```
-{ app:'lightshow-studio', version:4,
+{ app:'lightshow-studio', version:5,
   room:{w,d,h},
   settings:{ bpm, beatOffset, haze, brightness, house },
   fixtures:[ { type, universe, startAddress, label, pos:[x,y,z], rot:[x,y,z], mirror:index|null, laser?:output } ],
   tracks:[ { name, kind, groupId, mute, solo, open, target?:[fixtureIndex…]|null } ],
   palettes:[ { id, name, colors:[[r,g,b]…] } ],
-  cues:[ { kind:'laser', pattern, start, duration, track:index, params, anim?, colorRef? }
+  patterns:[ { key:'ild:…', name, fps, data:base64 } ],
+  cues:[ { kind:'laser', pattern, start, duration, track:index, params, anim?, colorRef?, text?, fps? }
        | { kind:'fixture', name, groupId, start, duration, track:index, layers:[{effectKey, params}] } ],
   markers:[ { t, name } ],
   audioName }
@@ -306,7 +322,8 @@ Version 1 (≤ v0.3.0) had no `tracks`/`markers` and a `lane` per cue;
 `tracksFromLanes()` converts it on open. Versions 1–2 stored a fixture cue as a
 single `effectKey` + `params`; it opens as a one-layer look. Versions ≤ 3 have
 no targets / palettes / laser output: tracks play on all projectors, the preset
-palettes load, cues keep their own colour. `applyProject` clears, rebuilds the
+palettes load, cues keep their own colour. Versions ≤ 4 have no imported
+patterns (the registry is cleared). `applyProject` clears, rebuilds the
 room (and re-hangs the house light) and fixtures (relinking mirror pairs by
 index), the tracks and markers, re-adds cues by kind onto their tracks (laser
 `anim` through `loadAnim()`), applies settings, and stops the transport.

@@ -1,14 +1,15 @@
 // Program workspace library: laser patterns (drawn as real thumbnails from the
-// pattern data), ready-made fixture looks, and single fixture effects. Drag one
-// onto the timeline, or double-click / press Enter to add it at the playhead.
-// An effect dropped onto a look replaces that layer. The search box filters
-// every list.
+// pattern data, in collapsible groups — Beams, Shapes, Waves, Graphics and the
+// show's Imported ILDA files), ready-made fixture looks, and single fixture
+// effects. Drag one onto the timeline, or double-click / press Enter to add it
+// at the playhead. An effect dropped onto a look replaces that layer. The
+// search box filters every list.
 
-import { PATTERNS } from '../laser/patterns.js';
+import { allPatterns, PATTERN_GROUPS, drawPatternThumb, onPatternsChanged } from '../laser/patterns.js';
 import { EFFECTS } from '../show/effects.js';
 import { LOOKS, SLOTS, slotOf } from '../show/looks.js';
 import { icon } from './icons.js';
-import { esc } from './dom.js';
+import { esc, prefs } from './dom.js';
 import { DND_TYPE } from '../timeline/TimelinePanel.js';
 import { effectShortName } from '../timeline/CueInspector.js';
 
@@ -19,14 +20,13 @@ const GROUPS = [
 ];
 
 export class ContentLibrary {
-  /** deps: shell, onAddPattern(key), onAddEffect(key), onAddLook(key) */
-  constructor(root, { shell, onAddPattern, onAddEffect, onAddLook }) {
+  /**
+   * deps: shell, onAddPattern(key), onAddEffect(key), onAddLook(key),
+   *       onImportIlda(), onRemovePattern(key)
+   */
+  constructor(root, { shell, onAddPattern, onAddEffect, onAddLook, onImportIlda, onRemovePattern }) {
     this.root = root;
-    const pats = PATTERNS.map((p) => `
-      <div class="pat" draggable="true" tabindex="0" data-kind="pattern" data-key="${p.key}" data-search="${esc(p.label.toLowerCase())} laser pattern" title="${esc(p.label)} — drag onto the timeline or double-click">
-        <canvas width="184" height="115" data-thumb="${p.key}"></canvas>
-        <div class="nm">${esc(p.label)}</div>
-      </div>`).join('');
+    this.query = '';
 
     const effectRow = (e, color) => `
       <div class="eff" draggable="true" tabindex="0" data-kind="effect" data-key="${e.key}" data-search="${esc(e.label.toLowerCase())}" title="Drag onto the timeline or double-click">
@@ -61,7 +61,7 @@ export class ContentLibrary {
         <input type="search" class="lib-search" placeholder="Search patterns, looks and effects" aria-label="Search the library" />
         <div class="sec">
           <div class="sec-title">${icon('laser', 'sm')}Laser patterns</div>
-          <div class="pat-grid">${pats}</div>
+          <div data-role="pats"></div>
         </div>
         <div class="sec">
           <div class="sec-title">${icon('moving-head', 'sm')}Looks</div>
@@ -75,15 +75,27 @@ export class ContentLibrary {
         <div class="tip">${icon('help', 'sm')}<div>Drag onto the timeline, or double-click to add at the playhead. Drop a single effect onto a look to swap that layer.</div></div>
       </div>`;
 
-    for (const c of root.querySelectorAll('canvas[data-thumb]')) drawPattern(c, PATTERNS.find((p) => p.key === c.dataset.thumb));
+    this._renderPatterns();
+    onPatternsChanged(() => this._renderPatterns());
 
     root.querySelector('[data-act="hide"]').addEventListener('click', () => shell.togglePanel('left', false));
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      if (b.dataset.act === 'import-ild') onImportIlda?.();
+      else if (b.dataset.act === 'del-pat') { e.stopPropagation(); onRemovePattern?.(b.dataset.key); }
+    });
+    // remember which pattern groups are open (not while a search forces them open)
+    root.addEventListener('toggle', (e) => {
+      const d = e.target;
+      if (d.dataset && d.dataset.pg && !this.query) prefs.set(`lib.pg.${d.dataset.pg}`, d.open);
+    }, true);
     const add = (item) => {
       if (item.dataset.kind === 'pattern') onAddPattern(item.dataset.key);
       else if (item.dataset.kind === 'look') onAddLook(item.dataset.key);
       else onAddEffect(item.dataset.key);
     };
-    root.addEventListener('dblclick', (e) => { const it = e.target.closest('[data-kind]'); if (it) add(it); });
+    root.addEventListener('dblclick', (e) => { if (e.target.closest('[data-act]')) return; const it = e.target.closest('[data-kind]'); if (it) add(it); });
     root.addEventListener('keydown', (e) => {
       const it = e.target.closest('[data-kind]');
       if (it && e.key === 'Enter') { e.preventDefault(); add(it); }
@@ -97,7 +109,34 @@ export class ContentLibrary {
     root.querySelector('.lib-search').addEventListener('input', (e) => this._filter(e.target.value));
   }
 
+  /** The pattern groups (re-rendered when the show's imported patterns change). */
+  _renderPatterns() {
+    const box = this.root.querySelector('[data-role="pats"]');
+    const pats = allPatterns();
+    box.innerHTML = PATTERN_GROUPS.map((g) => {
+      const list = pats.filter((p) => (p.group || 'graphics') === g.key);
+      const imp = g.key === 'imported';
+      const cards = list.map((p) => `
+        <div class="pat" draggable="true" tabindex="0" data-kind="pattern" data-key="${esc(p.key)}" data-search="${esc(`${p.label} ${g.label}`.toLowerCase())} laser pattern" title="${esc(p.label)}${p.frames ? ` — ${p.frames.length} frame${p.frames.length === 1 ? '' : 's'}` : ''} — drag onto the timeline or double-click">
+          <canvas width="184" height="115" data-thumb="${esc(p.key)}"></canvas>
+          <div class="nm">${esc(p.label)}</div>
+          ${imp ? `<button type="button" class="pat-del" data-act="del-pat" data-key="${esc(p.key)}" title="Remove ${esc(p.label)} from this show" aria-label="Remove ${esc(p.label)}">${icon('x', 'sm')}</button>` : ''}
+        </div>`).join('');
+      const add = imp ? `<button type="button" class="pat-import" data-act="import-ild" data-search="import ilda ild file imported" title="Import an ILDA laser file (.ild) from BEYOND, QuickShow, LaserOS and others">${icon('plus', 'sm')}<span>Import ILDA file…</span></button>` : '';
+      const open = prefs.get(`lib.pg.${g.key}`, true);
+      return `<details class="pat-group" data-pg="${g.key}" data-group${open ? ' open' : ''}>
+          <summary>${icon('chev-right', 'sm')}${esc(g.label)}<span class="n">${list.length || ''}</span></summary>
+          <div class="pat-grid">${cards}</div>${add}
+        </details>`;
+    }).join('');
+    for (const c of box.querySelectorAll('canvas[data-thumb]')) drawPatternThumb(c, pats.find((p) => p.key === c.dataset.thumb));
+    if (this.query) this._filter(this.query);
+  }
+
   _filter(q) {
+    this.query = q.trim();
+    // a search looks inside every pattern group
+    for (const d of this.root.querySelectorAll('details[data-pg]')) d.open = this.query ? true : prefs.get(`lib.pg.${d.dataset.pg}`, true);
     const words = q.toLowerCase().split(/\s+/).filter(Boolean);
     let any = false;
     for (const it of this.root.querySelectorAll('[data-search]')) {
@@ -110,31 +149,4 @@ export class ContentLibrary {
     }
     this.root.querySelector('[data-role="none"]').hidden = any;
   }
-}
-
-/** Draw a pattern's strokes (galvo space -1..1) into a thumbnail canvas. */
-function drawPattern(c, pat) {
-  const ctx = c.getContext('2d');
-  const w = c.width, h = c.height;
-  ctx.fillStyle = '#050608';
-  ctx.fillRect(0, 0, w, h);
-  const s = Math.min(w, h) * 0.42;
-  ctx.save();
-  ctx.translate(w / 2, h / 2);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  // soft glow pass, then a crisp core — reads as a laser, not a line drawing
-  for (const [width, alpha] of [[6, 0.18], [2.2, 1]]) {
-    ctx.strokeStyle = `rgba(95, 224, 172, ${alpha})`;
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    for (const stroke of pat.strokes) {
-      stroke.forEach(([x, y], i) => {
-        const X = x * s, Y = -y * s;
-        if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
-      });
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
 }

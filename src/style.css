@@ -1027,3 +1027,62 @@ body.simple .more.always { display: block !important; }
 .pal-edit-cols input[type="color"] { width: 32px; height: 26px; padding: 1px; }
 .pal-edit-btns { display: flex; align-items: center; gap: 6px; }
 .pal-edit-btns .grow { flex: 1; }
+
+/* ---- laser Stage 3b: grouped pattern library, ILDA import, text/frame-rate rows */
+details.pat-group { margin: 0 0 6px; }
+details.pat-group > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  cursor: pointer;
+  user-select: none;
+}
+details.pat-group > summary::-webkit-details-marker { display: none; }
+details.pat-group > summary:hover { color: var(--text-2); }
+details.pat-group > summary .ico { transition: transform 0.15s; }
+details.pat-group[open] > summary .ico { transform: rotate(90deg); }
+details.pat-group > summary .n { margin-left: auto; font-variant-numeric: tabular-nums; }
+details.pat-group > .pat-grid { margin: 2px 0 6px; }
+.pat { position: relative; }
+.pat-del {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  background: var(--bg-1);
+  color: var(--text-2);
+  cursor: pointer;
+  opacity: 0;
+}
+.pat:hover .pat-del, .pat:focus-within .pat-del { opacity: 1; }
+.pat-del:hover { color: var(--text-1); border-color: var(--danger, var(--line-2)); }
+.pat-del .ico { width: 12px; height: 12px; }
+.pat-import {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  margin: 2px 0 8px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pat-import:hover { color: var(--text-1); border-color: var(--accent); background: var(--bg-2); }
+.lmeta-text { width: 140px; text-transform: uppercase; }
