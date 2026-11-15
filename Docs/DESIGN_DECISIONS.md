@@ -382,8 +382,8 @@ option won each time. **Don't re-litigate these** — refine within them.
   tilt X/Y, visible points, scan rate, auto-key and easing, fixture-effect
   waveform details, the beat-offset field, external-console mode and sACN.
 - **Why:** The user chose "Both". A switch alone hides features people later
-  can't find; More rows alone still crowd beginners. Default is Pro until the
-  welcome screen (remake Stage 5) asks.
+  can't find; More rows alone still crowd beginners. Default is Pro; the
+  welcome screen (remake Stage 5) asks on first run.
 
 ### Look: "Studio graphite"
 - **Decision:** Neutral dark greys with a single blue accent (`--accent`).
@@ -530,8 +530,26 @@ option won each time. **Don't re-litigate these** — refine within them.
 - `[data-ws-only]` takes a space-separated list (`"program live"`) — CSS uses
   `~=` so one element can belong to several workspaces.
 
-### Not now (decided, coming in a later remake stage)
-Welcome screen + 5-step tour (Stage 5). See Roadmap.
+### First run: welcome screen + tour (remake Stage 5, v0.7.0)
+- **Decision:** On first run (pref `welcomed` unset) a welcome screen offers
+  Demo show / Empty venue / Open a show, a Simple-or-Pro choice and a "Show me
+  around" switch (on by default). Closing it (Esc / ×) keeps the demo that's
+  already loaded. A 5-step spotlight tour (`ui/Tour.js`) walks
+  Build → Program → Live. Both reopen from Help (?) and Ctrl+K.
+- **Why:** The user chose "welcome screen + short tour". The app always boots
+  the demo first, so the welcome screen never blocks a working show and
+  skipping it costs nothing.
+- **Demo / Empty from a later open are undo steps** (`history.record()`), so
+  picking one by mistake never loses work; on first run the history is reset
+  instead. The demo is a serialized snapshot taken at boot (`DEMO_SNAPSHOT`),
+  so it can come back after edits. Known gap: the show *name* isn't in
+  snapshots, so Ctrl+Z after a swap restores the show but keeps the new name.
+- **The tour blocks clicks and owns the keyboard** (capture-phase listener) so
+  a stray shortcut or click can't change the show half-way. It opens any
+  collapsed panel it points at and returns to the starting workspace.
+- **Empty states say the next step where you are:** the timeline's three-step
+  card floats over the empty clip area with `pointer-events: none` (drops
+  reach the track underneath); the empty-venue note is worded per workspace.
 
 ---
 

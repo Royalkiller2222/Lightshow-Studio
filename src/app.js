@@ -7,6 +7,8 @@
 //   centre  ─ the 3D view + floating tools / atmosphere / laser preview
 //   right   ─ inspector (selected fixture or cue, else venue / show)
 //   bottom  ─ Build: patch sheet · Program: timeline
+//   first run ─ welcome screen (demo / empty venue / open + Simple or Pro) and
+//               an optional 5-step tour; both reopen from Help and Ctrl+K
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -45,6 +47,8 @@ import { ContentLibrary } from './ui/ContentLibrary.js';
 import { PatchSheet } from './ui/PatchSheet.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { LivePanel } from './ui/LivePanel.js';
+import { Welcome } from './ui/Welcome.js';
+import { Tour } from './ui/Tour.js';
 import { toast } from './ui/overlays.js';
 import { isTypingTarget, prefs } from './ui/dom.js';
 
@@ -206,6 +210,8 @@ const overlay = new ViewportOverlay(document.getElementById('overlay'), {
   onAtmosphereCommit: commit,
   hasSparks: () => fixtures.some((f) => f.profile && f.profile.has('Trigger')),
   fixtureCount: () => fixtures.length,
+  workspace: () => shell.workspace,
+  onGoBuild: () => shell.setWorkspace('build'),
 });
 controls.addEventListener('start', () => overlay.cameraMoved());
 
@@ -263,6 +269,8 @@ const topBar = new TopBar(document.getElementById('topbar'), {
     setBpm,
     playPause: () => transport.toggle(),
     stop: () => transport.stop(),
+    welcome: () => openWelcome(),
+    tour: () => tour.start(),
   },
   output: { get: () => output, set: setOutput },
 });
@@ -498,12 +506,16 @@ function commands() {
   add('Live', 'Fullscreen', () => live.toggleFullscreen(), 'F');
   add('Live', 'Reset masters', () => { Object.assign(engine.masters, { dimmer: 1, speed: 1, size: 1 }); live.syncMasters(); });
   add('Help', 'Keyboard shortcuts', () => topBar.openHelp(), '?');
+  add('Help', 'Take the tour', () => tour.start());
+  add('Help', 'Show the welcome screen', () => openWelcome());
+  add('File', 'New show (empty venue)', () => startShow('empty'));
+  add('File', 'Load the demo show', () => startShow('demo'));
   return list;
 }
 
 // ---------- Keyboard shortcuts ----------
 window.addEventListener('keydown', (e) => {
-  if (palette.isOpen) return; // the palette handles its own keys
+  if (palette.isOpen || welcome.isOpen || tour.isOpen) return; // they handle their own keys
   const typing = isTypingTarget(e.target);
   const ctrl = e.ctrlKey || e.metaKey;
   const k = e.key.toLowerCase();
@@ -543,6 +555,62 @@ window.addEventListener('keydown', (e) => {
     default: return;
   }
 });
+
+// ---------- First run: welcome screen + tour ----------
+// The demo show is built above; keep a snapshot of it so "Demo show" can come
+// back later from the welcome screen (or Ctrl+K) after other edits.
+const DEMO_SNAPSHOT = serializeProject(ctx);
+const EMPTY_SHOW = {
+  app: 'lightshow-studio', version: DEMO_SNAPSHOT.version,
+  room: DEMO_SNAPSHOT.room,
+  settings: { bpm: 120, beatOffset: 0, haze: DEMO_SNAPSHOT.settings.haze, brightness: DEMO_SNAPSHOT.settings.brightness, house: true },
+  fixtures: [],
+  tracks: [{ name: 'Laser 1', kind: 'laser', open: true }, { name: 'Lights', kind: 'fixture', groupId: 'all' }],
+  cues: [], markers: [], audioName: null,
+};
+
+/**
+ * Replace the current show with the demo or an empty venue. The swap is an
+ * undo step (Ctrl+Z brings the old show back) — except on first run, where
+ * there's nothing to go back to.
+ */
+function startShow(id, { firstRun = false } = {}) {
+  if (id === 'open') { openProject(); return; }
+  const empty = id === 'empty';
+  applyProject(ctx, structuredClone(empty ? EMPTY_SHOW : DEMO_SNAPSHOT));
+  project.name = empty ? 'Untitled show' : 'Demo show';
+  topBar.setProject(project.name);
+  topBar.syncBpm();
+  resetCamera();
+  if (firstRun) history.reset();
+  else history.record();
+  shell.setWorkspace(empty ? 'build' : 'program');
+  updateInspector();
+  if (!firstRun) toast(empty ? 'New empty venue — Ctrl+Z brings the last show back.' : 'Demo show loaded — Ctrl+Z brings the last show back.', { kind: 'ok', ms: 4500 });
+}
+
+const tour = new Tour({ shell, onEnd: () => prefs.set('toured', true) });
+const welcome = new Welcome({
+  shell,
+  onStart: (id, { tour: wantTour, keep }) => {
+    prefs.set('welcomed', true);
+    if (!keep) startShow(id, { firstRun: welcomeFirstRun });
+    welcomeFirstRun = false;
+    // Opening a file shows a picker; start the tour straight away either way.
+    if (wantTour) setTimeout(() => tour.start(), id === 'open' ? 0 : 60);
+  },
+});
+let welcomeFirstRun = false;
+function openWelcome() {
+  if (tour.isOpen) tour.end(false);
+  palette.close?.();
+  welcomeFirstRun = false;
+  welcome.open({ firstRun: false, dirty: history.dirty });
+}
+if (!prefs.get('welcomed', false)) {
+  welcomeFirstRun = true;
+  welcome.open({ firstRun: true });
+}
 
 // ---------- Main loop ----------
 const clock = new THREE.Clock();

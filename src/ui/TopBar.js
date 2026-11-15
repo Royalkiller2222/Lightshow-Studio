@@ -15,7 +15,7 @@ export class TopBar {
    * @param {object} deps
    *   transport, shell,
    *   getDuration(): seconds shown after the playhead time,
-   *   actions: { open, save, undo, redo, search, setBpm(v), playPause, stop },
+   *   actions: { open, save, undo, redo, search, setBpm(v), playPause, stop, welcome, tour },
    *   output: { get(): {mode, artnetIp, sacn}, set(patch) }
    */
   constructor(root, { transport, shell, getDuration, actions, output }) {
@@ -172,7 +172,17 @@ export class TopBar {
         <span class="k muted small">Left-drag</span><span class="d">Orbit the camera</span>
         <span class="k muted small">Right-drag</span><span class="d">Pan</span>
         <span class="k muted small">Scroll</span><span class="d">Zoom</span>
+      </div>
+      <div class="help-actions">
+        <button type="button" class="btn sm" data-help="tour">${icon('play', 'sm')}Take the tour</button>
+        <button type="button" class="btn sm" data-help="welcome">${icon('logo', 'sm')}Welcome screen</button>
       </div>`;
+    box.addEventListener('click', (e) => {
+      const a = e.target.closest('[data-help]')?.dataset.help;
+      if (!a) return;
+      this.helpPop.close();
+      this.actions[a]?.();
+    });
     this.helpPop = new Popover(this.$('[data-role="help"]'), box, { label: 'Shortcuts' });
   }
 

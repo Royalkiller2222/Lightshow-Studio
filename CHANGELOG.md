@@ -3,6 +3,46 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.7.0 — 2026-11-14
+
+A friendlier first start: a welcome screen, a short tour, and hints that say
+what to do next. This finishes the interface remake.
+
+**Install:** download `LightshowStudio-Setup-0.7.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Welcome screen
+- Shows the first time you open the app (existing users see it once after
+  updating).
+- **How to start:** the **Demo show**, an **Empty venue** (a bare room, an
+  empty timeline with a laser track and a lights track, house light on), or
+  **Open a show…**.
+- **Simple or Pro:** pick how much of the interface you see. You can still
+  switch any time in the top bar.
+- **Show me around** starts the tour when you begin.
+- Reopen it any time from **Help (?) → Welcome screen** or **Ctrl+K**. From
+  there, Demo and Empty replace the current show, and **Ctrl+Z** brings the
+  old one back.
+
+### The tour
+- Five short steps that each light up one part of the window — the
+  workspaces, adding fixtures, the timeline, the inspector and Live — and
+  switch workspace as they go. At the end it puts you back where you were.
+- **Next / Back**, the arrow keys or **Enter**; **Esc** skips. Restart it from
+  **Help (?) → Take the tour** or **Ctrl+K**.
+
+### Hints when things are empty
+- **Timeline:** with no cues, a "Program your show in three steps" card floats
+  over the empty tracks: load a song (with a button), drag a pattern or look
+  onto a track, press Space and add markers. Drops go straight through the card
+  to the track underneath.
+- **3D view:** an empty venue says what to do in the workspace you're in. In
+  Program and Live it explains that laser cues still draw, with a **Go to
+  Build** button.
+- New **Ctrl+K** commands: *New show (empty venue)*, *Load the demo show*,
+  *Take the tour*, *Show the welcome screen*.
+
 ## v0.6.0 — 2026-10-22
 
 The Live workspace: perform the show you programmed.

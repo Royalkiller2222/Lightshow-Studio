@@ -402,8 +402,19 @@ export class TimelinePanel {
   render() {
     const tracks = this.engine.tracks;
     const rows = tracks.map((t) => this._trackHtml(t)).join('');
+    // Nothing programmed yet: a three-step "how to start" card under the tracks.
+    const song = this.transport.hasAudio;
+    const empty = this.engine.cues.length ? '' : `
+      <div class="tl-empty" data-role="empty">
+        <b>Program your show in three steps</b>
+        <ol>
+          <li class="${song ? 'done' : ''}">Load a song — its tempo is detected${song ? '' : `<button type="button" class="btn sm" data-act="load-audio">${icon('music', 'sm')}Load song</button>`}</li>
+          <li>Drag a laser pattern or a look from the library onto a track</li>
+          <li>Press <kbd>Space</kbd> to play · add section markers with <kbd>M</kbd> for Live</li>
+        </ol>
+      </div>`;
     this.tracksEl.innerHTML = `${rows}
-      <div class="trk-add" data-role="newtrack">${icon('plus', 'sm')}${tracks.length ? 'Drop a pattern or effect here to start a new track' : 'Drag a laser pattern or an effect from the library here to start your first track'}</div>`;
+      <div class="trk-add" data-role="newtrack">${icon('plus', 'sm')}${tracks.length ? 'Drop a pattern or effect here to start a new track' : 'Drag a laser pattern or an effect from the library here to start your first track'}</div>${empty}`;
     this._lanes = [...this.tracksEl.querySelectorAll('canvas[data-lane]')].map((canvas) => ({
       canvas,
       track: tracks.find((t) => t.id === Number(canvas.dataset.track)),
@@ -412,7 +423,7 @@ export class TimelinePanel {
     this._layoutClips();
     this._markSelection();
     const hint = this.$('[data-role="hint"]');
-    hint.textContent = this.engine.cues.length ? '' : 'Drag patterns and effects here from the library';
+    hint.textContent = ''; // the empty card below the tracks says it now
   }
 
   /** Back-compat name used by the rest of the app. */
@@ -813,6 +824,7 @@ export class TimelinePanel {
     nm.title = this.audio.name || '';
     this.$('[data-role="song-label"]').textContent = this.audio.name || 'Song';
     this.fit();
+    if (!this.engine.cues.length) this.render(); // tick "load a song" off the empty card
   }
 
   /** Snap a time to the beat grid (aligned to the detected downbeat). */

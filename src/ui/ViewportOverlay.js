@@ -19,7 +19,8 @@ export class ViewportOverlay {
    * @param {object} deps
    *   atmosphere: Atmosphere (haze / brightness / house light + onChange),
    *   onTool(mode), onCameraReset(), onSpark(on), onAtmosphereCommit(),
-   *   hasSparks(): bool, fixtureCount(): number
+   *   hasSparks(): bool, fixtureCount(): number,
+   *   workspace(): 'build'|'program'|'live', onGoBuild()
    */
   constructor(root, deps) {
     this.root = root;
@@ -50,7 +51,7 @@ export class ViewportOverlay {
         <canvas width="304" height="228" data-role="laser" aria-label="Laser output preview"></canvas>
         <div class="cap"><span>Laser output</span><span data-role="laser-state">idle</span></div>
       </div>
-      <div class="vo-empty" data-role="empty" hidden><b>Your venue is empty</b>Drag a fixture from the library on the left into the room.</div>`;
+      <div class="vo-empty" data-role="empty" hidden></div>`;
 
     this.$ = (s) => root.querySelector(s);
     this.laserCanvas = this.$('[data-role="laser"]');
@@ -60,6 +61,7 @@ export class ViewportOverlay {
       if (t) { this.deps.onTool(t.dataset.tool); return; }
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act === 'cam') this.deps.onCameraReset();
+      if (act === 'go-build') this.deps.onGoBuild?.();
       if (e.target.closest('[data-atmo="house"]')) { this.atmo.setHouse(!this.atmo.house); this.deps.onAtmosphereCommit(); }
     });
     root.addEventListener('input', (e) => {
@@ -111,8 +113,16 @@ export class ViewportOverlay {
     const spark = this.$('[data-act="spark"]');
     const has = this.deps.hasSparks();
     if (spark.hidden === has) spark.hidden = !has;
+    // Empty venue: say what to do next, for the workspace you're in.
     const empty = this.$('[data-role="empty"]');
-    const none = this.deps.fixtureCount() === 0;
-    if (empty.hidden === none) empty.hidden = !none;
+    const ws = this.deps.workspace?.() ?? 'build';
+    const want = this.deps.fixtureCount() === 0 ? ws : '';
+    if (want !== this._emptyFor) {
+      this._emptyFor = want;
+      empty.hidden = !want;
+      empty.innerHTML = want === 'build'
+        ? '<b>Your venue is empty</b>Drag a fixture from the library on the left into the room — or double-click one to add it.'
+        : '<b>No fixtures yet</b>Laser cues still draw in the room. To add moving heads, lasers or sparks, set them up in Build.<br><button type="button" class="btn sm" data-act="go-build">Go to Build</button>';
+    }
   }
 }

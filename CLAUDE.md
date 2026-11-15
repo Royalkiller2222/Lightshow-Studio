@@ -79,9 +79,10 @@ Show engine (timeline cues)            External console
 - **`src/laser/`** — vector `patterns.js`, `envelopes.js` (parameter spec + pure
   keyframe math) and `LaserRig.js` (3D beams + the flat galvo preview).
 - **UI (`src/ui/`)** — the window is *top bar / [library | 3D view | inspector] /
-  bottom area*. `Shell` (Build / Program workspaces, resizable panels,
+  bottom area*. `Shell` (Build / Program / Live workspaces, resizable panels,
   Simple/Pro), `TopBar`, `ViewportOverlay`, `Inspector`, `FixtureLibrary`,
-  `ContentLibrary`, `PatchSheet`, `CommandPalette` (Ctrl+K), plus `icons.js`,
+  `ContentLibrary`, `PatchSheet`, `CommandPalette` (Ctrl+K), `LivePanel`,
+  `Welcome` (first-run screen) and `Tour` (5-step spotlight tour), plus `icons.js`,
   `logo.js`, `dom.js`, `overlays.js`. The approved design is in
   DESIGN_DECISIONS "The interface".
 
@@ -93,13 +94,13 @@ Two tracks, both user-approved:
    advanced things, pros and beginner friendly". Five stages: **1 new layout +
    look ✔ (v0.3.0)**, **2 named-track timeline with curves under the cue ✔
    (v0.4.0)**, **3 fixture "Looks" with layers ✔ (v0.5.0)**, **4 Live workspace ✔
-   (v0.6.0)**, 5 welcome screen + tour (next).
+   (v0.6.0)**, **5 welcome screen + tour ✔ (v0.7.0)** — the remake is done.
    The design choices were made by the user via multiple-choice — don't
    re-litigate them; see DESIGN_DECISIONS "The interface".
 2. **The laser pivot** — a **Pangolin BEYOND-style laser-show designer**. The
    user runs **primarily laser shows**. Laser Stage 1 (patterns + values) and
    Stage 2 (keyframe envelopes) are done; Stage 3 (multiple projectors/zones,
-   palettes, an audio-reactive auto-preset) comes after the UI remake. Shows are
+   palettes, an audio-reactive auto-preset) is next. Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**
 

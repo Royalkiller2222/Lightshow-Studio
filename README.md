@@ -24,12 +24,14 @@ Firewall asks about network access: allow it, or no DMX leaves the computer.
 
 ## A tour of the window
 
-It opens on a demo show: four moving heads sweeping coloured beams through
-haze and a laser drawing a spinning, breathing tunnel. With no song loaded the
-16-second demo loops.
+The first time, a welcome screen asks how to start (the **demo show**, an
+**empty venue** or a saved show) and whether you want the **Simple** or **Pro**
+interface, then offers a 5-step tour. Reopen both from **?**. The demo has four
+moving heads sweeping coloured beams through haze and a laser drawing a
+spinning, breathing tunnel; with no song loaded the 16-second demo loops.
 
-- **Top bar** — the show's name, open/save, undo/redo, the **Build** and
-  **Program** workspaces, play/stop with the clock and tempo, the
+- **Top bar** — the show's name, open/save, undo/redo, the **Build**,
+  **Program** and **Live** workspaces, play/stop with the clock and tempo, the
   **Simple / Pro** switch, the output status (click it for Art-Net / sACN
   settings), **Search** (Ctrl+K finds any command) and help.
 - **Build workspace** — drag fixtures from the library into the room (they
@@ -43,6 +45,9 @@ haze and a laser drawing a spinning, breathing tunnel. With no song loaded the
   colour, brightness and more — each one keyframeable with the ◆ buttons;
   open a laser track to shape the curves right under the music. Tracks have
   mute / solo; markers (M) name the song's sections; Ctrl+wheel zooms.
+- **Live workspace** — perform the show: a pad for each section marker (keys
+  1–9, ← / →, optionally jumping on the next beat or bar), brightness / speed /
+  size masters, **B** for blackout, hold for sparks and **F** for fullscreen.
 - **On the 3D view** — Select / Move / Rotate tools, a camera reset, haze, room
   light and house light, the laser output preview, and "Hold for sparks".
   Left-drag orbits, right-drag pans, scroll zooms.

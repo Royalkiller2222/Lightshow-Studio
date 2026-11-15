@@ -155,6 +155,13 @@ that do `e.target.closest('[data-ws]')` match the **body** for every click —
 that silently swallowed every top-bar button once. Use attribute names the body
 doesn't have (`data-tab`, `data-act`, `data-mode`, …).
 
+### Gotcha 4b — the welcome screen on a fresh profile
+A fresh browser or Electron profile shows the first-run welcome screen over the
+app, and global shortcuts are ignored while it (or the tour) is open. Scripted
+checks should close it first (Esc, or set `localStorage['lss.welcomed']` to
+`'true'` and reload). To test first run again, remove `lss.welcomed` and
+reload.
+
 ### Gotcha 5 — don't run `python` on this machine
 `python` is the Windows Store stub and hangs waiting for the Store. Use `py -3`
 (or Node) for scripts.

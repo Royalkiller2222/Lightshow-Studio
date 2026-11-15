@@ -97,12 +97,13 @@ src/
                          History (whole-snapshot undo/redo, dirty tracking).
 
   ui/
-    Shell.js             Workspaces (Build/Program), splitters, panel collapse,
+    Shell.js             Workspaces (Build/Program/Live), splitters, panel collapse,
                          Simple/Pro, "More" open-state memory.
     TopBar.js            Brand + project name, file/undo, workspace tabs,
                          transport + BPM, Simple/Pro, output popover, help.
     ViewportOverlay.js   Tools, camera reset, atmosphere sliders, laser preview
-                         canvas, sparks button, camera hint, empty-venue note.
+                         canvas, sparks button, camera hint, empty-venue note
+                         (worded per workspace, "Go to Build" outside Build).
     Inspector.js         Right panel: fixture / venue / show views; hosts the
                          CueInspector for cues.
     FixtureLibrary.js    Build library: fixture cards (drag / + / double-click),
@@ -114,6 +115,10 @@ src/
     LivePanel.js         Live workspace: section pads (left), masters (right),
                          now/next strip + song overview (bottom); quantised
                          jumps; writes engine.masters.
+    Welcome.js           First-run screen: Demo / Empty venue / Open + Simple or
+                         Pro + "show me around". Calls back; app.js loads the show.
+    Tour.js              5-step spotlight tour (TOUR_STEPS: target selector,
+                         workspace, panel to open); restores the workspace.
     icons.js / logo.js   Hand-drawn SVG icon set; the logo generator.
     dom.js / overlays.js Helpers (esc, fmtTime, colour, prefs, more()); popovers
                          and toasts.

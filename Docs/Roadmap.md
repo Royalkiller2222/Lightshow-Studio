@@ -5,7 +5,7 @@ on purpose. See DESIGN_DECISIONS.md for why things were built the way they were.
 
 ## Where we are right now
 
-**Active focus: the UI remake** (user-approved Oct 2026 — "user friendly and
+**Just finished: the UI remake** (user-approved Oct 2026 — "user friendly and
 simple, with advanced things; pros and beginner friendly"). Each stage ships as
 a GitHub Release with an installer. Design choices: DESIGN_DECISIONS "The
 interface".
@@ -30,8 +30,12 @@ interface".
 - **Remake Stage 4 — Live workspace — ✔ v0.6.0.** Section pads from timeline
   markers (1–9, ←/→), quantised jumps, brightness/speed/size masters, blackout
   (B), sparks, fullscreen (F), now/next strip with song overview.
-- **Remake Stage 5 — first run — ✗ NEXT.** Welcome screen (Demo / Empty venue /
-  Open + Simple or Pro) and a skippable 5-step tour; more empty-state hints.
+- **Remake Stage 5 — first run — ✔ v0.7.0.** Welcome screen (Demo / Empty venue /
+  Open + Simple or Pro, reopenable; Demo/Empty are undoable), a skippable
+  5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
+  empty-venue note and a "three steps" card on an empty timeline.
+
+**The remake is complete.** Next up: laser Stage 3 below.
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -45,7 +49,7 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
   (add/drag/delete keys, half-beat snapping, linear/smooth/step ease, colour
   strip), key ticks on cue blocks, save/load/undo. The demo laser cue ships
   with a keyframed spin + size swell. See ARCHITECTURE.md "Keyframe envelopes".
-- **V2.1 Stage 3 — ✗ after the remake.** Multiple laser projectors/zones,
+- **V2.1 Stage 3 — ✗ NEXT.** Multiple laser projectors/zones,
   bigger pattern library, colour palettes, and an **audio-reactive auto-preset**
   for live song visualizing (it joins the Live workspace).
 
