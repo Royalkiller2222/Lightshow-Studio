@@ -182,8 +182,13 @@ src/
                          truth) + pure keyframe math: evalEnvelope, valueAt,
                          resolveLaserParams, setKey/removeKey/clearKeys,
                          keyTimes, loadAnim. No Three.js; Node-testable.
-    LaserRig.js          Renders the active laser cue: 3D beams + graphic
-                         (additive LineSegments) and a flat 2D preview canvas.
+    LaserRig.js          One projector's output: 3D beams + graphic (additive
+                         LineSegments) + drawPreview() for the flat galvo view.
+                         One per Laser projector fixture (fx.laser), plus the
+                         engine's fallbackLaser. galvoMap(params, output).
+    palettes.js          Preset palettes, colorRef normalising, paletteColor()
+                         (pick / beat cycle + fade), projector output defaults.
+                         No Three.js; Node-testable.
 
   placement/
     PlacementController.js  Drag-in placement (HTML5 DnD) + ghost preview + snap +
@@ -246,8 +251,21 @@ LTP colour+position (see DESIGN_DECISIONS).
   (LineSegments through frame points) plus faint **beams** (projector origin →
   each point) for the volumetric cone, and mirrors a flat 2D galvo view to the
   preview canvas using the same transform.
-- Engine renders the **top active laser cue only** (lane 0 wins) for the single
-  projector. Multiple projectors/zones are a Stage 3 item.
+- **Projectors (Stage 3a).** Every fixture with `.laser` (the Laser projector:
+  `fx.laser` = its LaserRig, `fx.laserOut` = `{size,posX,posY,flipX,flipY,limit}`)
+  is a projector. A laser track's `target` is `null` (all projectors) or an
+  array of fixtures. `_renderLaser` gives each projector the **top active
+  audible cue among the tracks targeting it** (lane 0 wins). With no projectors
+  in the rig, `engine.fallbackLaser` (standalone, over the stage) plays every
+  laser cue; otherwise it's hidden. Output is applied in `galvoMap` after the
+  cue's own transform: flip/size, then offset; `limit` scales brightness.
+- **Palettes.** `engine.palettes = [{id,name,colors:[[r,g,b]…]}]`. A cue's
+  `colorRef` is `null` (own colour) or `{palette, mode:'pick'|'cycle', index,
+  every, fade}`; cycle steps on song beats `(time − beatOffset)·bpm/60` (app
+  copies `transport.beatOffset` into `engine.beatOffset` each frame).
+  `removePalette` bakes the current pick colour into its cues first.
+- `ViewportOverlay.drawLaser(engine)` composites the selected projector (or all,
+  additively) into the preview canvas.
 
 ### Keyframe envelopes (Stage 2)
 ```
@@ -273,19 +291,22 @@ cue.anim = {
 
 ## Save/load shape (`core/project.js`)
 ```
-{ app:'lightshow-studio', version:3,
+{ app:'lightshow-studio', version:4,
   room:{w,d,h},
   settings:{ bpm, beatOffset, haze, brightness, house },
-  fixtures:[ { type, universe, startAddress, label, pos:[x,y,z], rot:[x,y,z], mirror:index|null } ],
-  tracks:[ { name, kind, groupId, mute, solo, open } ],
-  cues:[ { kind:'laser', pattern, start, duration, track:index, params, anim? }
+  fixtures:[ { type, universe, startAddress, label, pos:[x,y,z], rot:[x,y,z], mirror:index|null, laser?:output } ],
+  tracks:[ { name, kind, groupId, mute, solo, open, target?:[fixtureIndex…]|null } ],
+  palettes:[ { id, name, colors:[[r,g,b]…] } ],
+  cues:[ { kind:'laser', pattern, start, duration, track:index, params, anim?, colorRef? }
        | { kind:'fixture', name, groupId, start, duration, track:index, layers:[{effectKey, params}] } ],
   markers:[ { t, name } ],
   audioName }
 ```
 Version 1 (≤ v0.3.0) had no `tracks`/`markers` and a `lane` per cue;
 `tracksFromLanes()` converts it on open. Versions 1–2 stored a fixture cue as a
-single `effectKey` + `params`; it opens as a one-layer look. `applyProject` clears, rebuilds the
+single `effectKey` + `params`; it opens as a one-layer look. Versions ≤ 3 have
+no targets / palettes / laser output: tracks play on all projectors, the preset
+palettes load, cues keep their own colour. `applyProject` clears, rebuilds the
 room (and re-hangs the house light) and fixtures (relinking mirror pairs by
 index), the tracks and markers, re-adds cues by kind onto their tracks (laser
 `anim` through `loadAnim()`), applies settings, and stops the transport.

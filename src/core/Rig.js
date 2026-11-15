@@ -16,7 +16,7 @@ export class Rig {
     this.onRemoved = null;   // (fx) => void — lets the edit tools drop a stale selection
   }
 
-  /** The demo rig the app launches with: four movers on the truss + a spark pair. */
+  /** The demo rig the app launches with: four movers on the truss, a laser projector at the back, a spark pair. */
   seedDemo() {
     for (let i = 0; i < 4; i++) {
       this.spawn('moving-head', new THREE.Vector3(-4.5 + i * 3, 5.4, -3), { startAddress: 1 + i * 9 });
@@ -25,6 +25,7 @@ export class Rig {
     const r = this.spawn('cold-spark', new THREE.Vector3(3, 0, -6.5), { startAddress: 37, label: 'Cold spark R' });
     // The spark pair shares address 37 on purpose (both fire together).
     l.mirror = r; r.mirror = l;
+    this.spawn('laser', new THREE.Vector3(0, 5.2, -7.5), { startAddress: 41 });
   }
 
   /**
@@ -62,6 +63,8 @@ export class Rig {
     if (made.length === 2) {
       made[0].mirror = made[1];
       made[1].mirror = made[0];
+      // A mirrored pair of laser projectors also mirrors what they draw.
+      if (made[1].laserOut) made[1].laserOut.flipX = true;
     }
     return made;
   }

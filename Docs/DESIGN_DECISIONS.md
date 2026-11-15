@@ -313,6 +313,36 @@ curves live under the track"; these rules carried over unchanged.)
   raw radians with no readout. Rotation is **stored in radians** (what `LaserRig`
   consumes, so saves need no migration) and **displayed in degrees**.
 
+### Projectors are fixtures; tracks target them (Stage 3a, v0.8.0)
+- **Decision:** a Laser projector fixture *is* the projector — it owns a
+  `LaserRig` mounted on its body. Laser tracks (not cues) choose projectors:
+  `target = null` means "all", which is the default.
+- **Why:** BEYOND's zones map to physical projectors, and users already place
+  fixtures in Build — a separate "projector list" would duplicate the rig.
+  Targeting per track (not per cue) matches how fixture tracks already drive a
+  group, and a new projector automatically picks up every "all" track, so
+  adding hardware never silently leaves it dark.
+- **Each projector shows one cue** — the top active audible one among its
+  tracks — like a real projector playing one frame. Layering is done with tracks.
+- **Default projector:** with no Laser fixtures the old standalone rig plays
+  everything, so v3 shows and empty venues still show their lasers.
+- **Output settings live on the projector**, applied *after* the cue transform
+  (flip/size, then offset) so one show adapts to different mounts — the
+  BEYOND "projection zone" idea. A mirrored placement flips the twin's X.
+- **Renamed the type to "Laser projector"** because default names "Laser 1"
+  collided with the demo's laser track "Laser 1" and hid the "plays on" label.
+
+### Palettes are referenced, not copied (Stage 3a)
+- **Decision:** a cue stores `colorRef` (palette id + pick/cycle) instead of
+  copying colours; editing a palette changes every cue using it. Deleting a
+  palette **bakes** the cue's current pick colour into `params.color` so nothing
+  turns white.
+- **Cycle runs on song beats** (aligned to `beatOffset`), not cue-local time,
+  so several cues cycling the same palette stay in step. Beat rates are a small
+  fixed set (½–8 beats) — enough for shows, nothing to type.
+- The palette colour replaces `params.color` (and any colour envelope) while a
+  palette is in use; the Colour row is hidden to make that obvious.
+
 ---
 
 ## Project persistence & undo

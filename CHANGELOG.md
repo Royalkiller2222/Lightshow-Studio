@@ -3,6 +3,48 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.8.0 — 2026-11-14
+
+Laser Stage 3a: real laser projectors you can aim tracks at, per-projector
+output settings, and colour palettes that can cycle on the beat.
+
+**Install:** download `LightshowStudio-Setup-0.8.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Laser projectors
+- Every **Laser projector** fixture you place in Build now draws laser cues
+  itself: its own beams, from where it hangs. The demo show has one.
+- **Tracks choose their projectors.** Select a laser track: **Projectors**
+  in the inspector plays it on all of them (the default) or only the ones you
+  tick. The timeline header says where it plays ("plays on Laser projector 2").
+  Each projector shows the top active cue among the tracks aimed at it.
+- **Output settings per projector** (select the fixture): **Size**,
+  **Brightness limit**, **Flip left–right / up–down**, and in Pro, **Position**.
+  **Reset** puts them back. Placing a mirrored pair flips the twin for you.
+- The **laser preview** on the 3D view now has a switcher: **All projectors**
+  or one at a time.
+- A show with no laser projectors still plays its laser cues from a **default
+  projector** over the stage, so nothing goes dark.
+- The fixture type is now called **Laser projector** (new ones are named
+  "Laser projector 1", 2, …) so it doesn't get mixed up with laser tracks.
+
+### Colour palettes
+- A laser cue's colour can come from a **palette**: **Its own colour**,
+  **Pick from a palette** (click a swatch) or **Cycle through a palette** on the
+  beat — every ½, 1, 2, 4 or 8 beats, with an optional fade between colours.
+  The swatch playing right now has a ring.
+- Starts with three palettes (Ice, Fire, Club RGB). **New palette…** copies
+  the current one; **Edit palette** renames it, changes, adds or removes
+  colours (up to 8) or deletes it. Editing a palette updates every cue that
+  uses it. Deleting one keeps each cue's current colour.
+- Works in Simple mode too. Everything is undoable.
+
+### Files
+- Show files are now version 4 (projector targets, output settings, palettes).
+  Older shows open as before: tracks play on all projectors, cues keep their
+  own colours.
+
 ## v0.7.0 — 2026-11-14
 
 A friendlier first start: a welcome screen, a short tour, and hints that say

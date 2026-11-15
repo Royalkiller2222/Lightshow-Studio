@@ -2,8 +2,10 @@
 //
 // A project is a JSON snapshot: room, fixtures (type/patch/position/rotation/
 // mirror), timeline tracks, cues (fixture and laser, incl. keyframe envelopes),
-// section markers and settings. Version-1 files (anonymous lanes, no tracks)
-// are converted on open by tracksFromLanes().
+// section markers, laser palettes and settings. Version-1 files (anonymous
+// lanes, no tracks) are converted on open by tracksFromLanes(); older files
+// without projector targets / palettes open with "all projectors" and the
+// preset palettes.
 // Audio isn't embedded — its name is stored as a reminder and the song is
 // re-loaded by hand. Undo/redo re-apply whole-project snapshots: simple, and
 // it covers everything with one record() call per committed edit.
@@ -13,9 +15,11 @@ import { loadAnim } from '../laser/envelopes.js';
 import { EFFECT_BY_KEY } from '../show/effects.js';
 import { GROUPS } from '../show/ShowEngine.js';
 import { makeLayer } from '../show/looks.js';
+import { defaultPalettes, normalizePalettes, normalizeColorRef, normalizeOutput, isDefaultOutput } from '../laser/palettes.js';
 
+// 4: laser projectors (output settings, track targets) + palettes
 // 3: fixture cues are looks (layers) · 2: named tracks + markers · 1: anonymous lanes
-export const PROJECT_VERSION = 3;
+export const PROJECT_VERSION = 4;
 
 const ATTR_NAME = { intensity: 'Intensity', color: 'Colour', position: 'Movement' };
 
@@ -79,15 +83,23 @@ export function serializeProject(ctx) {
         type: fx.typeKey, universe: fx.universe, startAddress: fx.startAddress, label: e.label,
         pos: [+v.x.toFixed(3), +v.y.toFixed(3), +v.z.toFixed(3)], rot: fx.getRotation().map((r) => +r.toFixed(4)),
         mirror: fx.mirror && idx.has(fx.mirror) ? idx.get(fx.mirror) : null,
+        // laser projector output (only when changed from the defaults)
+        laser: fx.laserOut && !isDefaultOutput(fx.laserOut) ? { ...fx.laserOut } : undefined,
       };
     }),
-    tracks: engine.tracks.map((t) => ({ name: t.name, kind: t.kind, groupId: t.groupId, mute: t.mute, solo: t.solo, open: t.open })),
+    tracks: engine.tracks.map((t) => ({
+      name: t.name, kind: t.kind, groupId: t.groupId, mute: t.mute, solo: t.solo, open: t.open,
+      // laser tracks: null = every projector, else fixture indices
+      target: t.target ? t.target.filter((f) => idx.has(f)).map((f) => idx.get(f)) : null,
+    })),
+    palettes: engine.palettes.map((p) => ({ id: p.id, name: p.name, colors: p.colors.map((c) => [...c]) })),
     cues: engine.cues.map((c) => (c.kind === 'laser'
       ? {
         kind: 'laser', pattern: c.pattern,
         start: c.start, duration: c.duration, track: trackIdx.get(c.track) ?? 0,
         params: { ...c.params, color: [...c.params.color] },
         anim: c.anim ? structuredClone(c.anim) : undefined, // laser keyframe envelopes
+        colorRef: c.colorRef ? { ...c.colorRef } : undefined, // palette colour
       }
       : {
         kind: 'fixture', name: c.name, groupId: c.groupId,
@@ -122,7 +134,10 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
   const made = data.fixtures.map((f) => rig.restore(f));
   data.fixtures.forEach((f, i) => {
     if (f.mirror != null && made[i] && made[f.mirror]) made[i].mirror = made[f.mirror];
+    if (made[i] && made[i].laserOut) made[i].laserOut = normalizeOutput(f.laser);
   });
+
+  engine.palettes = normalizePalettes(data.palettes) ?? defaultPalettes();
 
   // Tracks: saved ones (v2), or derived from the old lanes (v1).
   const cues = data.cues || [];
@@ -137,6 +152,8 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
   }
   const made2 = savedTracks.map((t) => engine.addTrack({
     name: t.name, kind: t.kind === 'laser' ? 'laser' : 'fixture', groupId: t.groupId || 'movers',
+    // a saved projector list -> those fixtures (ones that failed to load drop out)
+    target: Array.isArray(t.target) ? t.target.map((i) => made[i]).filter((f) => f && f.laser) : null,
     mute: !!t.mute, solo: !!t.solo, open: !!t.open,
   }));
   // A cue pointing at a missing / wrong-kind track gets a fresh track of its kind.
@@ -163,6 +180,7 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
     if (c.kind === 'laser' && c.params) cue.params = { ...cue.params, ...c.params, color: [...(c.params.color || cue.params.color)] };
     const anim = c.kind === 'laser' ? loadAnim(c.anim) : undefined;
     if (anim) cue.anim = anim;
+    if (c.kind === 'laser') cue.colorRef = normalizeColorRef(c.colorRef, engine.palettes);
   });
   engine.syncTracks();
 

@@ -2,12 +2,14 @@
 // the fixture groups. Each frame it blacks out, then evaluates every cue active
 // at the transport's time and merges them into the UniverseHub: intensity HTP
 // (brightest wins), colour/position LTP (the higher track wins). Fixture cues
-// are looks (layers of effects); the top active laser cue drives the laser.
+// are looks (layers of effects). Laser tracks target projectors (every Laser
+// fixture, or chosen ones); each projector draws its own top active laser cue.
 
 import { EFFECT_BY_KEY, EFFECTS, writeAttr, writeRGB } from './effects.js';
 import { makeLayer, normalizeLayers } from './looks.js';
 import { PATTERN_BY_KEY } from '../laser/patterns.js';
 import { resolveLaserParams } from '../laser/envelopes.js';
+import { defaultPalettes, paletteColor } from '../laser/palettes.js';
 
 let _id = 1;
 let _tid = 1;
@@ -46,7 +48,9 @@ export class ShowEngine {
     this.masters = { dimmer: 1, speed: 1, size: 1, blackout: false };
     this._warp = 0;
     this._lastTime = null;
-    this.laserRig = null; // set by app; renders the active laser cue
+    this.fallbackLaser = null; // set by app: the default projector, used when the rig has no Laser fixtures
+    this.palettes = defaultPalettes(); // named laser colour palettes (saved with the show)
+    this.beatOffset = 0; // seconds to the song's first beat (set by app each frame), for palette cycles
     this._selection = []; // current viewport selection, for the "Selection" group
 
     // Per-frame merge buffer. Effects write here via `sink`; we flush once per
@@ -79,16 +83,30 @@ export class ShowEngine {
       case 'movers': return f.filter((x) => x.profile && x.profile.has('Pan'));
       case 'pars': return f.filter((x) => x.constructor.name === 'LedPar');
       case 'bars': return f.filter((x) => x.constructor.name === 'PixelBar' || x.constructor.name === 'Batten');
-      case 'lasers': return f.filter((x) => x.constructor.name === 'LaserProjector');
+      case 'lasers': return this.projectors();
       case 'sparks': return f.filter((x) => x.profile && x.profile.has('Trigger'));
       case 'selection': return this._selection;
       default: return [];
     }
   }
 
+  /** Laser projectors in the rig (Laser fixtures), in rig order. */
+  projectors() { return this.fixtures.filter((x) => !!x.laser); }
+
+  /**
+   * Projectors a laser track plays on: `track.target` null = every projector,
+   * else a list of fixtures (removed ones drop out). Fixture tracks: [].
+   */
+  trackProjectors(track) {
+    if (!track || track.kind !== 'laser') return [];
+    const all = this.projectors();
+    return track.target ? all.filter((p) => track.target.includes(p)) : all;
+  }
+
   // ---------------------------------------------------------------- tracks
-  addTrack({ name, kind = 'fixture', groupId = 'movers', mute = false, solo = false, open = false, index = null } = {}) {
-    const track = { id: _tid++, name: name || (kind === 'laser' ? 'Laser' : 'Fixtures'), kind, groupId: kind === 'laser' ? null : groupId, mute, solo, open };
+  addTrack({ name, kind = 'fixture', groupId = 'movers', target = null, mute = false, solo = false, open = false, index = null } = {}) {
+    const laser = kind === 'laser';
+    const track = { id: _tid++, name: name || (laser ? 'Laser' : 'Fixtures'), kind, groupId: laser ? null : groupId, target: laser && Array.isArray(target) ? target.slice() : null, mute, solo, open };
     if (index == null || index >= this.tracks.length) this.tracks.push(track);
     else this.tracks.splice(Math.max(0, index), 0, track);
     this.syncTracks();
@@ -148,7 +166,7 @@ export class ShowEngine {
 
   /** A BEYOND-style laser cue: a vector pattern + the 7 laser parameters. */
   addLaserCue({ pattern = 'beam-fan', start = 0, duration = 4, lane = 0, track = null } = {}) {
-    const cue = { id: _id++, kind: 'laser', pattern, start, duration, lane, track, params: laserParams() };
+    const cue = { id: _id++, kind: 'laser', pattern, start, duration, lane, track, params: laserParams(), colorRef: null };
     this.cues.push(cue);
     if (track != null) this.syncTracks();
     return cue;
@@ -205,28 +223,70 @@ export class ShowEngine {
     }
 
     this._flush();
-    this._renderLaser(time);
+    this._renderLaser(time, bpm);
   }
 
   /**
-   * Render the top active laser cue (lane 0 wins) on the laser rig, with any
-   * keyframed parameters evaluated at the cue-local time (0..1).
+   * Each projector draws the top active laser cue (lane 0 wins) among the
+   * tracks that target it, with keyframed parameters evaluated at the
+   * cue-local time (0..1) and a palette colour resolved at the song beat.
+   * With no Laser fixtures in the rig, the default projector plays every
+   * laser track.
    */
-  _renderLaser(time) {
-    if (!this.laserRig) return;
-    let top = null;
+  _renderLaser(time, bpm) {
+    const projs = this.projectors();
+    const fb = this.fallbackLaser;
+    if (fb) { fb.setVisible(!projs.length); if (projs.length) fb.blank(); }
+    const active = [];
     for (const c of this.cues) {
       if (c.kind !== 'laser' || time < c.start || time >= c.start + c.duration) continue;
-      if (!this.audible(c)) continue;
-      if (!top || c.lane < top.lane || (c.lane === top.lane && c.start > top.start)) top = c;
+      if (this.audible(c)) active.push(c);
     }
-    const pat = top && PATTERN_BY_KEY[top.pattern];
+    const beat = ((time - (this.beatOffset || 0)) * (bpm || 120)) / 60;
+    const draw = (rig, out, onIt) => {
+      let top = null;
+      for (const c of active) {
+        if (!onIt(this.trackOf(c))) continue;
+        if (!top || c.lane < top.lane || (c.lane === top.lane && c.start > top.start)) top = c;
+      }
+      this._drawCue(rig, out, top, time, beat);
+    };
+    if (!projs.length) { if (fb) draw(fb, null, () => true); return; }
+    for (const pr of projs) draw(pr.laser, pr.laserOut, (t) => !t || !t.target || t.target.includes(pr));
+  }
+
+  _drawCue(rig, out, cue, time, beat) {
+    const pat = cue && PATTERN_BY_KEY[cue.pattern];
     const m = this.masters;
-    if (!pat || m.blackout || m.dimmer <= 0) { this.laserRig.blank(); return; }
-    const u = Math.min(1, Math.max(0, (time - top.start) / (top.duration || 1)));
-    let p = resolveLaserParams(top, u);
-    if (m.dimmer !== 1 || m.size !== 1) p = { ...p, brightness: (p.brightness ?? 1) * m.dimmer, size: (p.size ?? 1) * m.size };
-    this.laserRig.show(pat, p);
+    if (!pat || m.blackout || m.dimmer <= 0) { rig.blank(); return; }
+    const u = Math.min(1, Math.max(0, (time - cue.start) / (cue.duration || 1)));
+    let p = resolveLaserParams(cue, u);
+    const col = cue.colorRef ? paletteColor(this.palettes, cue.colorRef, beat) : null;
+    if (col || m.dimmer !== 1 || m.size !== 1) {
+      p = { ...p, brightness: (p.brightness ?? 1) * m.dimmer, size: (p.size ?? 1) * m.size };
+      if (col) p.color = col;
+    }
+    rig.show(pat, p, out);
+  }
+
+  // -------------------------------------------------------------- palettes
+  paletteById(id) { return this.palettes.find((p) => p.id === id) || null; }
+
+  /** Cues whose colour comes from palette `id`. */
+  paletteUsers(id) { return this.cues.filter((c) => c.colorRef && c.colorRef.palette === id); }
+
+  /**
+   * Delete a palette. Cues that used it keep the colour they showed (their
+   * first referenced colour) as a fixed colour.
+   */
+  removePalette(id) {
+    const pal = this.paletteById(id);
+    if (!pal) return;
+    for (const c of this.paletteUsers(id)) {
+      c.params.color = paletteColor(this.palettes, { ...c.colorRef, mode: 'pick' }) || c.params.color;
+      c.colorRef = null;
+    }
+    this.palettes.splice(this.palettes.indexOf(pal), 1);
   }
 
   /** Merge the accumulator to DMX: intensity HTP, colour/position LTP. */

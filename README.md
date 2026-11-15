@@ -43,7 +43,10 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
   tracks (or below them to start a new track). Click a cue to edit it on the
   right. Laser cues have BEYOND-style Key Effects — size, rotation, position,
   colour, brightness and more — each one keyframeable with the ◆ buttons;
-  open a laser track to shape the curves right under the music. Tracks have
+  open a laser track to shape the curves right under the music. Laser colours
+  can come from palettes, cycling on the beat. Each laser track plays on all
+  your Laser projectors or just the ones you pick, and each projector has its
+  own size, position, flip and brightness limit. Tracks have
   mute / solo; markers (M) name the song's sections; Ctrl+wheel zooms.
 - **Live workspace** — perform the show: a pad for each section marker (keys
   1–9, ← / →, optionally jumping on the next beat or bar), brightness / speed /

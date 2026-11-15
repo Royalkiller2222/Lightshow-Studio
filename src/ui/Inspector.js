@@ -1,5 +1,7 @@
 // The right-hand panel: one place to edit whatever is selected.
-//   fixture selected  -> name, position, facing, mirror twin, DMX patch (Pro)
+//   fixture selected  -> name, position, facing, mirror twin, laser output
+//                        (Laser fixtures), DMX patch (Pro)
+//   track selected    -> name, fixtures / projectors, mute, solo, order
 //   cue selected      -> the CueInspector (fixture effect or laser Key Effects)
 //   nothing selected  -> Build: the venue (room size, rig summary)
 //                        Program: the show (song, tempo, cue summary)
@@ -10,6 +12,7 @@ import * as THREE from 'three';
 import { icon, fixtureIcon } from './icons.js';
 import { esc, more, fmtTime } from './dom.js';
 import { mirrorX } from '../placement/placement.js';
+import { defaultOutput } from '../laser/palettes.js';
 
 const DEG = 180 / Math.PI;
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -40,6 +43,8 @@ export class Inspector {
     root.querySelector('[data-act="hide"]').addEventListener('click', () => deps.shell.togglePanel('right', false));
 
     this.body.addEventListener('change', (e) => this._onChange(e));
+    // Laser output sliders apply live while dragging; 'change' commits.
+    this.body.addEventListener('input', (e) => { if (e.target.dataset.lo) this._onOutput(e.target, false); });
     this.body.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.target.matches('input[type="text"], input[type="number"]')) e.target.blur();
     });
@@ -63,7 +68,8 @@ export class Inspector {
     if (t?.kind === 'track') {
       const tr = t.track;
       const n = d.engine.cues.filter((c) => c.track === tr.id).length;
-      return `track:${tr.id}|${tr.name}|${tr.groupId}|${tr.mute}|${tr.solo}|${d.engine.tracks.indexOf(tr)}|${n}`;
+      const projs = tr.kind === 'laser' ? d.engine.projectors().map((p) => `${d.rig.labelOf(p)}:${!tr.target || tr.target.includes(p)}`).join(',') : '';
+      return `track:${tr.id}|${tr.name}|${tr.groupId}|${tr.mute}|${tr.solo}|${d.engine.tracks.indexOf(tr)}|${n}|${!!tr.target}|${projs}`;
     }
     if (t?.kind === 'marker') return `marker:${t.marker.name}|${t.marker.t.toFixed(3)}|${d.engine.markers.indexOf(t.marker)}`;
     if (t?.kind === 'fixture') {
@@ -161,11 +167,42 @@ export class Inspector {
              <div class="pro" style="margin-top:6px"><button type="button" class="btn sm ghost" data-act="unlink">Unlink the pair</button></div>`
           : '<p class="muted small" style="margin:0">Not mirrored. Turn on "Place mirrored pairs" in the library to place fixtures as twins.</p>'}
       </div>
+      ${fx.laserOut ? this._laserOutHtml(fx) : ''}
       <div class="sec pro">
         <div class="sec-title">DMX</div>
         ${dmx}
       </div>
       <div class="ifoot"><button type="button" class="btn danger" data-act="remove">${icon('trash', 'sm')}Remove fixture</button></div>`;
+  }
+
+  /** A Laser fixture's projector output: what it does to every cue it plays. */
+  _laserOutHtml(fx) {
+    const o = fx.laserOut;
+    const pct = (v) => `${Math.round(v * 100)}%`;
+    const f2 = (v) => (+v).toFixed(2);
+    const range = (k, label, min, max, step, fmt, title) => `<label class="prop" title="${title}"><span class="name">${label}</span><span class="ctl"><input type="range" min="${min}" max="${max}" step="${step}" value="${o[k]}" data-lo="${k}" aria-label="${label}" /><span class="val" data-loval="${k}">${fmt(o[k])}</span></span></label>`;
+    const flip = (k, label, title) => `<label class="prop" title="${title}"><span class="name">${label}</span><span class="ctl"><input type="checkbox" class="switch" data-lo="${k}" ${o[k] ? 'checked' : ''} /></span></label>`;
+    return `
+      <div class="sec">
+        <div class="sec-title">Laser output<span class="grow"></span><button type="button" class="btn sm ghost" data-act="lo-reset" title="Back to full size, centred, no flip, full brightness">Reset</button></div>
+        ${range('size', 'Size', 0, 2, 0.01, f2, 'Scales everything this projector draws')}
+        ${range('limit', 'Brightness limit', 0, 1, 0.01, pct, 'The brightest this projector ever gets: cues and the brightness master scale below it')}
+        ${flip('flipX', 'Flip left–right', 'Mirror what this projector draws (a mirrored pair starts with one flipped)')}
+        ${flip('flipY', 'Flip up–down', 'Turn what this projector draws upside down (for an upside-down mount)')}
+        ${more('laser-output', range('posX', 'Position X', -1, 1, 0.01, f2, 'Shift everything this projector draws left / right') + range('posY', 'Position Y', -1, 1, 0.01, f2, 'Shift everything this projector draws up / down'), 'More output')}
+        <p class="muted small" style="margin:4px 0 0">Applies to every laser cue this projector plays. Choose which laser tracks play on it in each track's settings.</p>
+      </div>`;
+  }
+
+  /** A laser-output control moved; `commit` on release (undo step). */
+  _onOutput(el, commit) {
+    const fx = this.target?.fx;
+    if (!fx?.laserOut) return;
+    const k = el.dataset.lo;
+    fx.laserOut[k] = el.type === 'checkbox' ? el.checked : parseFloat(el.value);
+    const out = this.body.querySelector(`[data-loval="${k}"]`);
+    if (out) out.textContent = k === 'limit' ? `${Math.round(fx.laserOut[k] * 100)}%` : fx.laserOut[k].toFixed(2);
+    if (commit) this.d.onCommit();
   }
 
   /** Copy the live position/rotation into the fields (skips the one being typed in). */
@@ -214,7 +251,7 @@ export class Inspector {
         </div>
       </div>
       <div class="sec">
-        ${laser ? '' : `<label class="prop"><span class="name">Fixtures</span><span class="ctl"><select data-trk="group">${groups}</select></span></label>`}
+        ${laser ? this._targetHtml(tr) : `<label class="prop"><span class="name">Fixtures</span><span class="ctl"><select data-trk="group">${groups}</select></span></label>`}
         <label class="prop"><span class="name">Mute</span><span class="ctl"><input type="checkbox" class="switch" data-trk="mute" ${tr.mute ? 'checked' : ''} /></span></label>
         <label class="prop"><span class="name">Solo</span><span class="ctl"><input type="checkbox" class="switch" data-trk="solo" ${tr.solo ? 'checked' : ''} /><span class="muted small">play only soloed tracks</span></span></label>
         <div class="prop"><span class="name">Cues</span><span class="ctl">${n}</span></div>
@@ -228,6 +265,23 @@ export class Inspector {
         <p class="muted small" style="margin:6px 0 0">${laser ? 'When two laser cues overlap, the higher track is the one you see.' : 'Where tracks drive the same fixtures, the higher track wins colour and position; brightness takes the brightest.'}</p>
       </div>
       <div class="ifoot"><button type="button" class="btn danger" data-act="trk-delete">${icon('trash', 'sm')}Delete track${n ? ` and its ${n} cue${n === 1 ? '' : 's'}` : ''}</button></div>`;
+  }
+
+  /** Which projectors a laser track plays on: all of them, or a chosen few. */
+  _targetHtml(tr) {
+    const d = this.d;
+    const projs = d.engine.projectors();
+    if (!projs.length) {
+      return `<div class="prop"><span class="name">Projectors</span><span class="ctl muted small">The default projector</span></div>
+        <p class="muted small" style="margin:0 0 4px">Add a Laser projector in Build to place your own, then choose which ones this track plays on.</p>`;
+    }
+    const all = !tr.target;
+    const rows = projs.map((p, i) => `<label class="chk"><input type="checkbox" data-trk="proj" data-proj="${i}" ${all || tr.target.includes(p) ? 'checked' : ''} ${all ? 'disabled' : ''} />${esc(d.rig.labelOf(p))}</label>`).join('');
+    const none = !all && !projs.some((p) => tr.target.includes(p));
+    return `
+      <label class="prop"><span class="name">Projectors</span><span class="ctl"><input type="checkbox" class="switch" data-trk="all-proj" ${all ? 'checked' : ''} /><span class="muted small">all of them</span></span></label>
+      ${projs.length > 1 || !all ? `<div class="proj-list">${rows}</div>` : ''}
+      ${none ? `<p class="warn-text small" style="display:flex;gap:6px;margin:2px 0 4px">${icon('warning', 'sm')}Plays on no projector. Tick at least one.</p>` : ''}`;
   }
 
   // ----------------------------------------------------------------- marker
@@ -320,6 +374,12 @@ export class Inspector {
     if (mk && act === 'mk-go') return this.d.transport.seek(mk.t);
     if (mk && act === 'mk-delete') return this.d.onDeleteMarker(mk);
     const fx = this.target?.fx;
+    if (act === 'lo-reset' && fx?.laserOut) {
+      fx.laserOut = defaultOutput();
+      this.d.onCommit();
+      this.refresh();
+      return;
+    }
     if (act === 'remove' && fx) this.d.onRemoveFixture(fx);
     else if (act === 'twin' && fx?.mirror) this.d.onSelectFixture(fx.mirror);
     else if (act === 'unlink' && fx?.mirror) {
@@ -347,6 +407,13 @@ export class Inspector {
       else if (k === 'group') tr.groupId = el.value;
       else if (k === 'mute') tr.mute = el.checked;
       else if (k === 'solo') tr.solo = el.checked;
+      else if (k === 'all-proj') tr.target = el.checked ? null : d.engine.projectors().slice();
+      else if (k === 'proj') {
+        const projs = d.engine.projectors();
+        const set = new Set(d.engine.trackProjectors(tr));
+        if (el.checked) set.add(projs[+el.dataset.proj]); else set.delete(projs[+el.dataset.proj]);
+        tr.target = projs.filter((x) => set.has(x));
+      }
       d.onTrackChange(tr);
       this._render();
       return;
@@ -365,6 +432,7 @@ export class Inspector {
       this.refresh();
       return;
     }
+    if (el.dataset.lo) { this._onOutput(el, true); return; }
     const fx = this.target?.fx;
     const k = el.dataset.fx;
     if (!fx || !k) return;

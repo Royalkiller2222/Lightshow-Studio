@@ -19,8 +19,9 @@ import { lookName } from '../show/ShowEngine.js';
 import { SLOTS, slotOf, makeLayer, setLayer, removeSlot } from '../show/looks.js';
 import { PATTERNS } from '../laser/patterns.js';
 import { LASER_PARAMS, PARAM_BY_KEY, EASES, isAnimated, valueAt, setKey, clearKeys } from '../laser/envelopes.js';
+import { CYCLE_RATES, MAX_COLORS, defaultPalettes, newPaletteId, paletteColor } from '../laser/palettes.js';
 import { icon } from '../ui/icons.js';
-import { esc, more, hexToRgb, rgbToHex, clamp } from '../ui/dom.js';
+import { esc, more, hexToRgb, rgbToHex, clamp, prefs } from '../ui/dom.js';
 import { snapKeyU } from './snap.js';
 
 /** Readout text for a look-layer control. */
@@ -106,7 +107,9 @@ export class CueInspector {
           ${input}
         </div>`;
     };
-    const basic = LASER_PARAMS.filter((p) => !p.adv).map(rowFor).join('');
+    // "Colour from" (own colour / palette colour / palette cycle) sits just
+    // above the Colour row; it's re-rendered per cue by _renderPalette().
+    const basic = LASER_PARAMS.filter((p) => !p.adv).map((p) => (p.key === 'color' ? '<div class="pal-box" data-role="pal"></div>' : '') + rowFor(p)).join('');
     const adv = LASER_PARAMS.filter((p) => p.adv).map(rowFor).join('');
     return `
       <div data-view="laser" hidden>
@@ -140,6 +143,10 @@ export class CueInspector {
   _wire() {
     const el = this.el;
     el.addEventListener('click', (e) => {
+      const sw = e.target.closest('[data-swatch]');
+      if (sw && this.cue?.colorRef) { this.cue.colorRef.index = +sw.dataset.swatch; this._paletteEdited(true); return; }
+      const pact = e.target.closest('[data-act^="pal-"]')?.dataset.act;
+      if (pact && this.cue?.colorRef) { this._paletteAction(pact); return; }
       const keyBtn = e.target.closest('[data-key]');
       if (keyBtn) { this._keyParam(keyBtn.dataset.key); return; }
       const pick = e.target.closest('[data-pick]');
@@ -311,6 +318,116 @@ export class CueInspector {
     const u = this._cueU(cue);
     for (const spec of LASER_PARAMS) this._showParam(spec, valueAt(cue, spec.key, u), true);
     this._markRows(cue);
+    this._renderPalette(cue);
+  }
+
+  // ---------------------------------------------------------- palette colour
+  /**
+   * The "Colour from" block: the cue's own colour (the keyframable Colour
+   * row), one colour of a palette, or the palette cycling on the beat. Also
+   * edits the chosen palette (name, colours) — palettes belong to the show, so
+   * every cue using one changes with it.
+   */
+  _renderPalette(cue) {
+    const box = this.$('[data-role="pal"]');
+    const ref = cue.colorRef;
+    const pal = ref && this.engine.paletteById(ref.palette);
+    this.$('[data-lp="color"]').hidden = !!pal;
+    const opt = (list, cur) => list.map(([k, l]) => `<option value="${esc(k)}"${String(k) === String(cur) ? ' selected' : ''}>${esc(l)}</option>`).join('');
+    const row = (label, ctl, cls = '') => `<div class="lp-row${cls}"><span></span><span class="name nopick">${label}</span><span class="pal-ctl">${ctl}</span></div>`;
+    let html = row('Colour from', `<select data-pal="src" aria-label="Where this cue's colour comes from">${opt([['fixed', 'Its own colour'], ['pick', 'A palette colour'], ['cycle', 'Palette, on the beat']], pal ? ref.mode : 'fixed')}</select>`);
+    if (pal) {
+      const pals = this.engine.palettes.map((p) => [p.id, p.name]);
+      html += row('Palette', `<select data-pal="palette" aria-label="Palette">${opt([...pals, ['__new', 'New palette…']], pal.id)}</select>`);
+      const n = pal.colors.length;
+      const cur = ref.index % n; // the chosen colour, or where a cycle starts
+      html += `<div class="pal-swatches" role="group" aria-label="${ref.mode === 'cycle' ? 'Colour the cycle starts on' : 'Palette colour'}">${pal.colors.map((c, i) => `<button type="button" class="pal-sw${i === cur ? ' on' : ''}" data-swatch="${i}" style="background:${rgbToHex(c)}" title="${ref.mode === 'cycle' ? 'Start the cycle on this colour' : 'Use this colour'}" aria-label="Colour ${i + 1}"></button>`).join('')}</div>`;
+      if (ref.mode === 'cycle') {
+        html += row('Changes', `<select data-pal="every" aria-label="How often the colour changes">${opt(CYCLE_RATES.map((r) => [r.key, r.label]), ref.every)}</select>`);
+        html += row('Fade', `<input type="checkbox" class="switch" data-pal="fade" ${ref.fade ? 'checked' : ''} /><span class="muted small">blend colours</span>`);
+      }
+      const users = this.engine.paletteUsers(pal.id).length;
+      const edit = `
+        <label class="prop"><span class="name">Name</span><span class="ctl"><input type="text" data-pal="name" value="${esc(pal.name)}" spellcheck="false" aria-label="Palette name" /></span></label>
+        <div class="pal-edit-cols">${pal.colors.map((c, i) => `<input type="color" value="${rgbToHex(c)}" data-pal-col="${i}" aria-label="Palette colour ${i + 1}" />`).join('')}</div>
+        <div class="pal-edit-btns">
+          <button type="button" class="btn sm" data-act="pal-add" ${n >= MAX_COLORS ? 'disabled' : ''}>${icon('plus', 'sm')}Add colour</button>
+          <button type="button" class="btn sm ghost" data-act="pal-pop" ${n <= 1 ? 'disabled' : ''}>Remove last</button>
+          <span class="grow"></span>
+          <button type="button" class="btn sm ghost danger" data-act="pal-delete" title="Delete this palette — cues using it keep their current colour">${icon('trash', 'sm')}</button>
+        </div>
+        <p class="muted small" style="margin:4px 0 0">Used by ${users} laser cue${users === 1 ? '' : 's'}; changing it changes all of them.</p>`;
+      const open = prefs.get('more.palette-edit', false);
+      html += `<details class="more always pal-edit" data-more="palette-edit"${open ? ' open' : ''}><summary>${icon('chev-right', 'sm')}Edit palette</summary><div class="more-body">${edit}</div></details>`;
+    }
+    box.innerHTML = html;
+  }
+
+  /** A palette control changed (from the 'input' event). */
+  _onPaletteInput(el) {
+    const cue = this.cue;
+    const k = el.dataset.pal;
+    if (k === 'src') {
+      if (el.value === 'fixed') {
+        // Keep showing the colour it had, now as the cue's own colour.
+        const c = cue.colorRef && paletteColor(this.engine.palettes, { ...cue.colorRef, mode: 'pick' });
+        if (c) cue.params.color = c;
+        cue.colorRef = null;
+      } else {
+        if (!this.engine.palettes.length) this.engine.palettes.push(...defaultPalettes());
+        cue.colorRef = cue.colorRef || { palette: this.engine.palettes[0].id, mode: 'pick', index: 0, every: 1, fade: false };
+        cue.colorRef.mode = el.value;
+      }
+      this._paletteEdited(false);
+      return;
+    }
+    const ref = cue.colorRef;
+    const pal = ref && this.engine.paletteById(ref.palette);
+    if (!pal) return;
+    if (k === 'palette') {
+      if (el.value === '__new') {
+        const id = newPaletteId(this.engine.palettes);
+        // Starts as a copy of the one you were on, so there's something to tweak.
+        this.engine.palettes.push({ id, name: `Palette ${this.engine.palettes.length + 1}`, colors: pal.colors.map((c) => [...c]) });
+        ref.palette = id;
+        prefs.set('more.palette-edit', true); // open the editor for the new one
+      } else {
+        ref.palette = el.value;
+      }
+      this._paletteEdited(false);
+    } else if (k === 'every') { ref.every = parseFloat(el.value); this.onChange(); }
+    else if (k === 'fade') { ref.fade = el.checked; this.onChange(); }
+    else if (k === 'name') { const v = el.value.trim(); if (v) { pal.name = v; const o = this.$(`[data-pal="palette"] option[value="${pal.id}"]`); if (o) o.textContent = v; } }
+  }
+
+  /** Palette colour picker moved (live); the 'change' event commits. */
+  _onPaletteColor(el) {
+    const pal = this.cue?.colorRef && this.engine.paletteById(this.cue.colorRef.palette);
+    if (!pal) return;
+    const i = +el.dataset.palCol;
+    pal.colors[i] = hexToRgb(el.value);
+    const sw = this.$(`[data-swatch="${i}"]`);
+    if (sw) sw.style.background = el.value;
+  }
+
+  _paletteAction(act) {
+    const ref = this.cue.colorRef;
+    const pal = this.engine.paletteById(ref.palette);
+    if (!pal) return;
+    if (act === 'pal-add' && pal.colors.length < MAX_COLORS) pal.colors.push([...pal.colors[pal.colors.length - 1]]);
+    else if (act === 'pal-pop' && pal.colors.length > 1) pal.colors.pop();
+    else if (act === 'pal-delete') this.engine.removePalette(pal.id); // this cue falls back to its own colour
+    else return;
+    this._paletteEdited(true);
+    if (act === 'pal-delete') this._laserRefresh(this.cue);
+  }
+
+  /** Re-render the block after a structural palette change; `commit` = undo step now. */
+  _paletteEdited(commit) {
+    this._renderPalette(this.cue);
+    if (!this.cue.colorRef) this._showParam(PARAM_BY_KEY.color, valueAt(this.cue, 'color', this._cueU(this.cue)), true);
+    this.onChange();
+    if (commit) this.onCommit();
   }
 
   /** Write a param's value into its control (+ readout). */
@@ -348,6 +465,8 @@ export class CueInspector {
   _onLaserInput(e) {
     const cue = this.cue;
     const el = e.target;
+    if (el.dataset.pal) { this._onPaletteInput(el); return; }
+    if (el.dataset.palCol) { this._onPaletteColor(el); return; }
     if (el.dataset.lmeta === 'pattern') {
       cue.pattern = el.value;
       const pat = PATTERNS.find((p) => p.key === cue.pattern);
@@ -419,6 +538,15 @@ export class CueInspector {
     const u = this._cueU(cue);
     for (const spec of LASER_PARAMS) {
       if (isAnimated(cue, spec.key)) this._showParam(spec, valueAt(cue, spec.key, u));
+    }
+    // A cycling palette: ring the swatch that's playing at the playhead.
+    const ref = cue.colorRef;
+    const pal = ref && ref.mode === 'cycle' && this.engine.paletteById(ref.palette);
+    if (pal) {
+      const n = pal.colors.length;
+      const beat = ((this.transport.time - (this.transport.beatOffset || 0)) * (this.transport.bpm || 120)) / 60;
+      const now = (((ref.index + Math.floor(beat / (ref.every || 1))) % n) + n) % n;
+      for (const sw of this.el.querySelectorAll('[data-swatch]')) sw.classList.toggle('now', +sw.dataset.swatch === now);
     }
   }
 }

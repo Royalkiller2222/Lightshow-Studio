@@ -1,11 +1,12 @@
 // Floating controls on top of the 3D view: the Select / Move / Rotate tools
 // and camera reset (top-left), atmosphere — haze, room light, house light —
 // (top-right), the cold-spark button + mouse hint (bottom-left), and the laser
-// galvo preview (bottom-right, Program only). Atmosphere lives here rather than
+// galvo preview (bottom-right, Program and Live) with a switcher for which
+// projector it shows (all of them overlaid, or one). Atmosphere lives here rather than
 // in a panel because it changes how you *see* the venue, not the show itself.
 
 import { icon } from './icons.js';
-import { prefs } from './dom.js';
+import { prefs, esc } from './dom.js';
 
 const TOOLS = [
   { id: 'select', icon: 'pointer', label: 'Select', key: 'V' },
@@ -20,7 +21,8 @@ export class ViewportOverlay {
    *   atmosphere: Atmosphere (haze / brightness / house light + onChange),
    *   onTool(mode), onCameraReset(), onSpark(on), onAtmosphereCommit(),
    *   hasSparks(): bool, fixtureCount(): number,
-   *   workspace(): 'build'|'program'|'live', onGoBuild()
+   *   workspace(): 'build'|'program'|'live', onGoBuild(),
+   *   labelOf(fx): a fixture's name (for the projector switcher)
    */
   constructor(root, deps) {
     this.root = root;
@@ -49,12 +51,18 @@ export class ViewportOverlay {
       </div>
       <div class="vo-br float" data-ws-only="program live">
         <canvas width="304" height="228" data-role="laser" aria-label="Laser output preview"></canvas>
-        <div class="cap"><span>Laser output</span><span data-role="laser-state">idle</span></div>
+        <div class="cap"><select data-role="laser-proj" aria-label="Which projector the preview shows" title="Which projector the preview shows"></select><span data-role="laser-state">idle</span></div>
       </div>
       <div class="vo-empty" data-role="empty" hidden></div>`;
 
     this.$ = (s) => root.querySelector(s);
     this.laserCanvas = this.$('[data-role="laser"]');
+    this.laserPick = 'all'; // 'all' | a projector fixture
+    this._projSig = null;
+    this.$('[data-role="laser-proj"]').addEventListener('change', (e) => {
+      const i = e.target.value;
+      this.laserPick = i === 'all' ? 'all' : (this._projs[+i] ?? 'all');
+    });
 
     root.addEventListener('click', (e) => {
       const t = e.target.closest('[data-tool]');
@@ -101,6 +109,39 @@ export class ViewportOverlay {
     this._hintGone = true;
     prefs.set('hint.camera', true);
     this.$('[data-role="hint"]').classList.add('gone');
+  }
+
+  /**
+   * Per-frame: draw the chosen projector(s) into the preview and keep the
+   * switcher's list in step with the rig. With no Laser fixtures the default
+   * projector is the only choice.
+   */
+  drawLaser(engine) {
+    const projs = engine.projectors();
+    const sig = projs.map((p) => this.deps.labelOf(p)).join('');
+    const sel = this.$('[data-role="laser-proj"]');
+    if (sig !== this._projSig) {
+      this._projSig = sig;
+      this._projs = projs;
+      if (this.laserPick !== 'all' && !projs.includes(this.laserPick)) this.laserPick = 'all';
+      sel.innerHTML = projs.length
+        ? `<option value="all">${projs.length > 1 ? 'All projectors' : esc(this.deps.labelOf(projs[0]))}</option>${projs.length > 1 ? projs.map((p, i) => `<option value="${i}">${esc(this.deps.labelOf(p))}</option>`).join('') : ''}`
+        : '<option value="all">Default projector</option>';
+      sel.disabled = projs.length < 2;
+      sel.value = this.laserPick === 'all' ? 'all' : String(projs.indexOf(this.laserPick));
+    }
+    const rigs = !projs.length ? (engine.fallbackLaser ? [engine.fallbackLaser] : [])
+      : this.laserPick === 'all' ? projs.map((p) => p.laser) : [this.laserPick.laser];
+    const c = this.laserCanvas;
+    const ctx = c.getContext('2d');
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.globalCompositeOperation = 'lighter'; // overlapping projectors add up, like light
+    let live = false;
+    for (const r of rigs) { if (r.active) { live = true; r.drawPreview(ctx, c.width, c.height); } }
+    ctx.globalCompositeOperation = 'source-over';
+    this.setLaserState(live ? 'live' : 'idle');
   }
 
   setLaserState(text) {

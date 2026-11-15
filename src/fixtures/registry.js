@@ -44,7 +44,7 @@ export const FIXTURE_TYPES = [
   },
   {
     key: 'laser',
-    label: 'Laser',
+    label: 'Laser projector',
     onTruss: true,
     profile: LaserRGB,
     create: (hub, scene, opts) => new LaserProjector(hub, scene, opts),

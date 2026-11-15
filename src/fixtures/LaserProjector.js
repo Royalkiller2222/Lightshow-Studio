@@ -3,10 +3,18 @@
 // Speed sets the rotation rate, Spread the cone half-angle. We visualise DMX
 // lasers as line beams + bloom (ILDA control is out of scope). Truss-mounted,
 // points down over the floor.
+//
+// It is also a *vector projector* for laser cues: `this.laser` (a LaserRig
+// mounted on the fixture, aimed forward and slightly down) draws whatever the
+// laser tracks that target it play, after this projector's output settings
+// (`this.laserOut`: size, position, flip, brightness limit). That part is
+// visual-only, like all laser cues today.
 
 import * as THREE from 'three';
 import { Fixture } from './Fixture.js';
 import { LaserRGB } from './FixtureProfile.js';
+import { LaserRig } from '../laser/LaserRig.js';
+import { defaultOutput } from '../laser/palettes.js';
 
 const bodyMaterial = new THREE.MeshStandardMaterial({
   color: 0x1b1b20, roughness: 0.5, metalness: 0.5,
@@ -60,6 +68,11 @@ export class LaserProjector extends Fixture {
     this.fan.userData.ignorePick = true;
     this.fan.visible = false;
     this.emitter.add(this.fan);
+
+    // Vector projector head (laser cues). Mounted on root so it follows the
+    // fixture's position and mount rotation; no housing of its own.
+    this.laser = new LaserRig(this.root, { position: new THREE.Vector3(0, -0.02, 0.12), tilt: 0.32, body: false });
+    this.laserOut = defaultOutput();
   }
 
   _rebuildFan(half) {

@@ -200,6 +200,12 @@ const timeline = new TimelinePanel(transport, audio, engine, document.getElement
   onCueMoved: () => cueInspector.refreshMeta(),
   onCurveChange: (cue) => { if (cue === cueInspector.cue) cueInspector.refresh(); },
   onCurvePick: (key) => cueInspector.setFocus(key),
+  // "Laser 1 + Laser 2" under a laser track that targets chosen projectors.
+  laserTargetLabel: (t) => {
+    if (!t.target) return '';
+    const on = engine.trackProjectors(t);
+    return on.length ? on.map((p) => rig.labelOf(p)).join(' + ') : 'no projector';
+  },
 });
 
 const overlay = new ViewportOverlay(document.getElementById('overlay'), {
@@ -212,12 +218,14 @@ const overlay = new ViewportOverlay(document.getElementById('overlay'), {
   fixtureCount: () => fixtures.length,
   workspace: () => shell.workspace,
   onGoBuild: () => shell.setWorkspace('build'),
+  labelOf: (fx) => rig.labelOf(fx),
 });
 controls.addEventListener('start', () => overlay.cameraMoved());
 
-// Laser projector: renders the active laser cue as 3D beams + the flat preview.
-const laserRig = new LaserRig(scene, { previewCanvas: overlay.laserCanvas });
-engine.laserRig = laserRig;
+// The default laser projector: draws laser cues when the rig has no Laser
+// fixtures of its own (each Laser fixture carries its own projector).
+const fallbackLaser = new LaserRig(scene);
+engine.fallbackLaser = fallbackLaser;
 
 const fixtureLibrary = new FixtureLibrary(document.getElementById('lib-build'), {
   types: FIXTURE_TYPES,
@@ -351,6 +359,7 @@ function addFixture(key) {
 
 function removeFixture(fx) {
   rig.remove(fx);
+  if (fx.laser) timeline.render(); // laser track headers name their projectors
   commit();
 }
 
@@ -624,6 +633,7 @@ function animate() {
   // Feed the current viewport selection to the "Selection" cue group.
   const sel = editTools.selected;
   engine.setSelection(sel ? (sel.mirror ? [sel, sel.mirror] : [sel]) : []);
+  engine.beatOffset = transport.beatOffset || 0;
   engine.update(transport.time, transport.bpm, audio.bands());
   for (const f of fixtures) f.update(dt);
 
@@ -633,7 +643,7 @@ function animate() {
   topBar.frame();
   overlay.frame();
   live.frame();
-  overlay.setLaserState(laserRig.active ? 'live' : 'idle');
+  overlay.drawLaser(engine);
 
   controls.update();
   resize();

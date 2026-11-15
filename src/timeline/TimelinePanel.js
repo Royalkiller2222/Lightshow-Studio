@@ -32,7 +32,8 @@ export class TimelinePanel {
   /**
    * opts: onLoadAudio(file), onEdit() (undo checkpoint),
    *       onSelect(kind: 'cue'|'track'|'marker'|null, obj),
-   *       onCueMoved(cue) (dragged/resized), onCurveChange(cue) (keys edited here)
+   *       onCueMoved(cue) (dragged/resized), onCurveChange(cue) (keys edited here),
+   *       laserTargetLabel(track): projector names for a laser track's header, or ''
    */
   constructor(transport, audio, engine, root, opts = {}) {
     this.transport = transport;
@@ -439,6 +440,9 @@ export class TimelinePanel {
   _trackHtml(t) {
     const laser = t.kind === 'laser';
     const g = GROUPS.find((x) => x.id === t.groupId);
+    // Under the name: the fixtures a fixture track drives, or the projectors a
+    // laser track plays on (only when it's not simply all of them).
+    const sub = laser ? (this.o.laserTargetLabel?.(t) || '') : (g ? g.label : '');
     const lanes = this._lanesFor(t).map((p) => `
       <div class="crv${this.curveFocus?.trackId === t.id && this.curveFocus.key === p.key ? ' cur' : ''}">
         <div class="crv-head" data-pick-curve="${p.key}" data-track="${t.id}" title="${esc(p.label)} keyframes for this track">${icon('diamond', 'sm')}${esc(p.label)}</div>
@@ -449,7 +453,7 @@ export class TimelinePanel {
         <div class="trk-head" data-track-head="${t.id}" title="Click to edit the track · double-click to rename">
           ${laser ? `<button type="button" class="trk-chev" data-act-trk="open" title="${t.open ? 'Hide' : 'Show'} keyframe curves" aria-label="Toggle curves">${icon(t.open ? 'chev-down' : 'chev-right', 'sm')}</button>` : '<span class="trk-chev"></span>'}
           <span class="trk-ico">${icon(laser ? 'laser' : 'moving-head', 'sm')}</span>
-          <span class="trk-txt" title="${esc(t.name)}${laser || !g ? '' : ` — drives ${esc(g.label)}`}"><span class="trk-name">${esc(t.name)}</span>${laser || !g || t.name.includes(g.label) ? '' : `<span class="trk-sub">${esc(g.label)}</span>`}</span>
+          <span class="trk-txt" title="${esc(t.name)}${sub ? ` — ${laser ? 'plays on' : 'drives'} ${esc(sub)}` : ''}"><span class="trk-name">${esc(t.name)}</span>${sub && !t.name.includes(sub) ? `<span class="trk-sub">${esc(sub)}</span>` : ''}</span>
           <button type="button" class="trk-btn" data-act-trk="mute" aria-pressed="${t.mute}" title="Mute this track">M</button>
           <button type="button" class="trk-btn solo" data-act-trk="solo" aria-pressed="${t.solo}" title="Solo: play only soloed tracks">S</button>
         </div>

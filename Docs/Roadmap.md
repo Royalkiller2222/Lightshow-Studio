@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Next up: laser Stage 3 below.
+**The remake is complete.** Next up: laser Stage 3b below.
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -49,9 +49,18 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
   (add/drag/delete keys, half-beat snapping, linear/smooth/step ease, colour
   strip), key ticks on cue blocks, save/load/undo. The demo laser cue ships
   with a keyframed spin + size swell. See ARCHITECTURE.md "Keyframe envelopes".
-- **V2.1 Stage 3 — ✗ NEXT.** Multiple laser projectors/zones,
-  bigger pattern library, colour palettes, and an **audio-reactive auto-preset**
-  for live song visualizing (it joins the Live workspace).
+- **V2.1 Stage 3** — split into three releases (approved 2026-11-14):
+  - **3a — projectors + palettes — ✔ v0.8.0.** Every Laser projector fixture
+    draws cues itself; laser tracks target all or some projectors; per-projector
+    output (size, position, flip, brightness limit); preview switcher; a default
+    projector when the rig has none; named palettes (pick / beat cycle with
+    fade). File version 4.
+  - **3b — ✗ NEXT (v0.9.0).** ~15 more patterns, a grouped pattern library,
+    ILDA `.ild` import.
+  - **3c (v0.10.0).** Audio-reactive **Auto** pad in Live for live song
+    visualizing.
+- **Then: imports** — QLC+ `.qxw`, xLights `.xsq`, MVR (rig only).
+- **Final phase: user documentation.**
 
 ### Stage 2 follow-ups (small, pick any)
 - **Waveform mode per parameter** — BEYOND's "effect based on waveform": a
@@ -130,7 +139,7 @@ Mostly independent; pick any subset. The laser Stages above are the live part of
 V2.1. Leans: **(P)** pre-programmed, **(L)** live/busking.
 
 - **V2.1 — Effect engine (P).** Waveform-driven per-attribute fixture effects —
-  ✔ done. Laser cue system (BEYOND) — Stages 1–2 ✔, Stage 3 next.
+  ✔ done. Laser cue system (BEYOND) — Stages 1–2 ✔, 3a ✔, 3b next.
 - **V2.2 — Groups, palettes & presets.** User-defined groups/selection sets;
   colour/position/beam palettes referenced by name; saveable effect presets.
 - **V2.3 — Cue & cuelist parity (P).** Per-cue fade in/out + crossfade + delay;
