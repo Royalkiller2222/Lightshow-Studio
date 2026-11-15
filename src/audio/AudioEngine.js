@@ -25,17 +25,52 @@ export class AudioEngine {
   /** Normalised low/mid/high band levels (0..1) of the audio playing now. */
   bands() {
     if (!this.playing || !this.buffer) return { bass: 0, mid: 0, high: 0 };
-    this.analyser.getByteFrequencyData(this._freq);
-    const binHz = this.ctx.sampleRate / this.analyser.fftSize;
+    return this._bands(this.analyser, this._freq);
+  }
+
+  _bands(analyser, freq) {
+    analyser.getByteFrequencyData(freq);
+    const binHz = this.ctx.sampleRate / analyser.fftSize;
     const band = (lo, hi, gain) => {
       const i0 = Math.max(1, Math.floor(lo / binHz));
-      const i1 = Math.min(this._freq.length - 1, Math.ceil(hi / binHz));
+      const i1 = Math.min(freq.length - 1, Math.ceil(hi / binHz));
       let sum = 0;
-      for (let i = i0; i <= i1; i++) sum += this._freq[i];
+      for (let i = i0; i <= i1; i++) sum += freq[i];
       const avg = i1 >= i0 ? sum / (i1 - i0 + 1) / 255 : 0;
       return Math.min(1, avg * gain); // highs are quieter -> more gain
     };
     return { bass: band(20, 150, 1.5), mid: band(150, 2000, 2.2), high: band(2000, 9000, 3.0) };
+  }
+
+  // ---- sound input (microphone / line-in) for live Auto: analysed only,
+  // never played back (no feedback). Asks for permission on first use.
+  get inputOn() { return !!this._input; }
+
+  async startInput() {
+    if (this._input) return;
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('sound input is not available here');
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
+    const src = this.ctx.createMediaStreamSource(stream);
+    const an = this.ctx.createAnalyser();
+    an.fftSize = 2048;
+    an.smoothingTimeConstant = 0.6;
+    src.connect(an); // not to the speakers
+    this._input = { stream, src, an, freq: new Uint8Array(an.frequencyBinCount), label: stream.getAudioTracks()[0]?.label || 'Sound input' };
+  }
+
+  stopInput() {
+    if (!this._input) return;
+    for (const t of this._input.stream.getTracks()) t.stop();
+    this._input.src.disconnect();
+    this._input = null;
+  }
+
+  get inputLabel() { return this._input?.label || ''; }
+
+  /** Band levels of the sound input (zeros when it's off). */
+  inputBands() {
+    return this._input ? this._bands(this._input.an, this._input.freq) : { bass: 0, mid: 0, high: 0 };
   }
 
   get duration() { return this.buffer ? this.buffer.duration : 0; }

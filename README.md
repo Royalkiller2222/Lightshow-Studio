@@ -53,6 +53,10 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
 - **Live workspace** — perform the show: a pad for each section marker (keys
   1–9, ← / →, optionally jumping on the next beat or bar), brightness / speed /
   size masters, **B** for blackout, hold for sparks and **F** for fullscreen.
+  **Auto** (A) lets the music drive the lasers live, from the song or a
+  microphone / line-in.
+- **Auto show** — reads the whole song (intro, builds, drops, breaks) and
+  writes an editable laser show onto the timeline, with section markers.
 - **On the 3D view** — Select / Move / Rotate tools, a camera reset, haze, room
   light and house light, the laser output preview, and "Hold for sparks".
   Left-drag orbits, right-drag pans, scroll zooms.

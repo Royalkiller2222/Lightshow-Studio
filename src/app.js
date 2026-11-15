@@ -48,6 +48,10 @@ import { ContentLibrary } from './ui/ContentLibrary.js';
 import { PatchSheet } from './ui/PatchSheet.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { LivePanel } from './ui/LivePanel.js';
+import { AutoPanel } from './ui/AutoPanel.js';
+import { AutoShowDialog } from './ui/AutoShowDialog.js';
+import { analyzeSong } from './auto/analyze.js';
+import { LiveDirector, generateShow, normalizeAutoSettings } from './auto/director.js';
 import { Welcome } from './ui/Welcome.js';
 import { Tour } from './ui/Tour.js';
 import { toast } from './ui/overlays.js';
@@ -196,6 +200,7 @@ const cueInspector = new CueInspector({
 
 const timeline = new TimelinePanel(transport, audio, engine, document.getElementById('timeline'), {
   onLoadAudio: loadSong,
+  onAutoShow: () => autoDialog.open(),
   onEdit: commit,
   onSelect: (kind, obj) => onTimelineSelected(kind, obj),
   onCueMoved: () => cueInspector.refreshMeta(),
@@ -297,6 +302,126 @@ const live = new LivePanel({
   getLength: () => timeline.length,
   onSpark: (on) => { engine.manualSpark = on; },
 });
+
+// ---------- Auto (Stage 3c) ----------
+// Two modes share one set of settings (engine.autoSettings, saved with the show):
+//   live        — LiveDirector picks patterns from what it hears right now
+//                 (the song, or a mic / line-in) and overrides the laser tracks
+//                 while it's on. A performance control: on/off isn't undoable.
+//   pregenerate — analyse the whole song, then write editable laser cues onto
+//                 "Auto" tracks at the top of the timeline (an undo step).
+engine.autoSettings = normalizeAutoSettings(null);
+let autoBeat = 0; // live Auto's beat clock: the song's beat while playing, else free-running
+let autoSeed = 1; // each pregenerated take uses the next seed
+let analysisCache = null; // { buffer, bpm, offset, an }
+
+async function setAuto(on) {
+  if (on === !!engine.auto) return;
+  if (!on) {
+    engine.auto = null;
+    audio.stopInput();
+    autoPanel.sync();
+    return;
+  }
+  autoBeat = transport.beat;
+  engine.auto = new LiveDirector(engine.autoSettings, (Date.now() & 0xffff) + 1);
+  autoPanel.sync();
+  if (engine.autoSettings.source === 'input') await startSoundInput();
+}
+async function startSoundInput() {
+  try {
+    await audio.startInput();
+    toast(`Auto is listening to ${audio.inputLabel || 'the sound input'}.`, { kind: 'ok' });
+  } catch (e) {
+    console.warn('Sound input failed:', e);
+    toast(`Couldn't open a sound input: ${e.message}. Auto follows the beat instead.`, { kind: 'error', ms: 6000 });
+  }
+}
+function setAutoSettings(next) {
+  const prev = engine.autoSettings;
+  engine.autoSettings = normalizeAutoSettings(next);
+  engine.auto?.setSettings(engine.autoSettings);
+  if (engine.auto && prev.source !== engine.autoSettings.source) {
+    if (engine.autoSettings.source === 'input') startSoundInput();
+    else audio.stopInput();
+  }
+  history.record();
+  autoPanel.sync();
+}
+const projectorCount = () => Math.max(1, engine.projectors().length);
+
+function songAnalysis() {
+  const c = analysisCache;
+  if (c && c.buffer === audio.buffer && c.bpm === transport.bpm && c.offset === transport.beatOffset) return c.an;
+  const an = analyzeSong(audio.buffer, { bpm: transport.bpm, offset: transport.beatOffset || 0 });
+  analysisCache = { buffer: audio.buffer, bpm: transport.bpm, offset: transport.beatOffset, an };
+  return an;
+}
+const autoTracks = () => engine.tracks.filter((t) => t.auto);
+
+/** Write a pregenerated show: replaces earlier Auto tracks + markers (one undo step). */
+function pregenerate() {
+  if (!audio.buffer) return;
+  const an = songAnalysis();
+  const s = engine.autoSettings;
+  const projs = engine.projectors();
+  const pairs = s.alternate && projs.length > 1;
+  const show = generateShow(an, s, { palettes: engine.palettes, projectors: pairs ? 2 : 1, seed: autoSeed++ });
+  setAuto(false);
+  for (const t of autoTracks()) engine.removeTrack(t.id);
+  engine.markers = engine.markers.filter((m) => !m.auto);
+  const lane = {};
+  if (pairs) {
+    lane.A = engine.addTrack({ name: 'Auto A', kind: 'laser', index: 0, auto: true, target: projs.filter((_, i) => i % 2 === 0) });
+    lane.B = engine.addTrack({ name: 'Auto B', kind: 'laser', index: 1, auto: true, target: projs.filter((_, i) => i % 2 === 1) });
+  } else lane.A = engine.addTrack({ name: 'Auto', kind: 'laser', index: 0, auto: true });
+  for (const c of show.cues) {
+    const track = lane[c.lane];
+    if (!track) continue;
+    const cue = engine.addLaserCue({ pattern: c.pattern, start: c.start, duration: c.duration, track: track.id });
+    Object.assign(cue.params, c.params);
+    if (c.anim && Object.keys(c.anim).length) cue.anim = c.anim;
+    if (c.colorRef) cue.colorRef = c.colorRef;
+  }
+  for (const m of show.markers) {
+    if (engine.markers.some((x) => Math.abs(x.t - m.t) < 0.25)) continue;
+    engine.markers.push({ t: m.t, name: m.name, auto: true });
+  }
+  engine.markers.sort((a, b) => a.t - b.t);
+  engine.syncTracks();
+  shell.setWorkspace('program');
+  timeline.selectCue(null);
+  timeline.render();
+  history.record();
+  const n = show.cues.length;
+  toast(`Auto show: ${n} laser cue${n === 1 ? '' : 's'} over ${an.sections.length} sections. Edit anything; Ctrl+Z undoes it.`, { kind: 'ok', ms: 5500 });
+}
+
+const autoDialog = new AutoShowDialog({
+  hasSong: () => !!audio.buffer,
+  onLoadSong: () => timeline.pickAudio(),
+  analysis: songAnalysis,
+  getSettings: () => engine.autoSettings,
+  setSettings: setAutoSettings,
+  palettes: () => engine.palettes,
+  projectors: projectorCount,
+  autoTrackCount: () => autoTracks().length,
+  onGenerate: pregenerate,
+});
+
+const autoPanel = new AutoPanel(live.autoRoot, {
+  getSettings: () => engine.autoSettings,
+  setSettings: setAutoSettings,
+  isOn: () => !!engine.auto,
+  toggle: () => setAuto(!engine.auto),
+  onPregenerate: () => autoDialog.open(),
+  palettes: () => engine.palettes,
+  projectors: projectorCount,
+  director: () => engine.auto,
+  hasSong: () => !!audio.buffer,
+});
+// Auto is a Live control: leaving Live hands the lasers back to the timeline.
+shell.onChange(() => { if (shell.workspace !== 'live' && engine.auto) setAuto(false); });
 
 // ---------- Selection -> inspector ----------
 // The inspector follows the most recent pick: a timeline item (cue, track or
@@ -425,6 +550,8 @@ history = new History({
     lastPicked = picked;
     updateInspector();
     topBar.syncBpm();
+    engine.auto?.setSettings(engine.autoSettings);
+    autoPanel.sync();
   },
 });
 history.onChange(() => {
@@ -561,6 +688,9 @@ function commands() {
   add('View', 'Switch to Pro mode', () => shell.setPro(true), '', () => !shell.pro);
   add('Output', 'Output settings…', () => topBar.openOutput());
   add('Live', 'Blackout on / off', () => live.toggleBlackout(), 'B');
+  add('Live', 'Auto (live) on', () => { shell.setWorkspace('live'); setAuto(true); }, 'A', () => !engine.auto);
+  add('Live', 'Auto (live) off', () => setAuto(false), 'A', () => !!engine.auto);
+  add('Show', 'Pregenerate an Auto show…', () => autoDialog.open());
   add('Live', 'Fullscreen', () => live.toggleFullscreen(), 'F');
   add('Live', 'Reset masters', () => { Object.assign(engine.masters, { dimmer: 1, speed: 1, size: 1 }); live.syncMasters(); });
   add('Help', 'Keyboard shortcuts', () => topBar.openHelp(), '?');
@@ -573,7 +703,7 @@ function commands() {
 
 // ---------- Keyboard shortcuts ----------
 window.addEventListener('keydown', (e) => {
-  if (palette.isOpen || welcome.isOpen || tour.isOpen) return; // they handle their own keys
+  if (palette.isOpen || welcome.isOpen || tour.isOpen || autoDialog.isOpen) return; // they handle their own keys
   const typing = isTypingTarget(e.target);
   const ctrl = e.ctrlKey || e.metaKey;
   const k = e.key.toLowerCase();
@@ -595,6 +725,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') { e.preventDefault(); live.step(-1); return; }
     if (e.key === 'ArrowRight') { e.preventDefault(); live.step(1); return; }
     if (k === 'f') { live.toggleFullscreen(); return; }
+    if (k === 'a') { setAuto(!engine.auto); return; }
   }
   if (k === 'b') { live.toggleBlackout(); return; }
 
@@ -683,6 +814,12 @@ function animate() {
   const sel = editTools.selected;
   engine.setSelection(sel ? (sel.mirror ? [sel, sel.mirror] : [sel]) : []);
   engine.beatOffset = transport.beatOffset || 0;
+  if (engine.auto) {
+    // live Auto: hear the song or the sound input; follow the song's beat while it plays
+    const input = engine.autoSettings.source === 'input' && audio.inputOn;
+    autoBeat = transport.playing ? transport.beat : autoBeat + (dt * transport.bpm) / 60;
+    engine.auto.update({ beat: autoBeat, bands: input ? audio.inputBands() : audio.bands(), dt, palettes: engine.palettes });
+  }
   engine.update(transport.time, transport.bpm, audio.bands());
   for (const f of fixtures) f.update(dt);
 
@@ -692,6 +829,7 @@ function animate() {
   topBar.frame();
   overlay.frame();
   live.frame();
+  autoPanel.frame();
   overlay.drawLaser(engine);
 
   controls.update();

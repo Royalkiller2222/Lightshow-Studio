@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Next up: laser Stage 3c below.
+**The remake is complete.** Laser Stage 3 is complete too; next up: imports.
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -59,9 +59,14 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
     groups (Beams, Shapes, Waves, Graphics), a Text pattern (14-segment font),
     ILDA `.ild` import (formats 0/1/2/4/5, colours, animation, per-cue frame
     rate) stored in the show file. File version 5.
-  - **3c — ✗ NEXT (v0.10.0).** Audio-reactive **Auto** pad in Live for live song
-    visualizing.
-- **Then: imports** — QLC+ `.qxw`, xLights `.xsq`, MVR (rig only).
+  - **3c — Auto — ✔ v0.10.0.** Two modes sharing one set of settings (saved
+    with the show). **Live:** an Auto pad in Live (A) that picks patterns by
+    energy from the song or a sound input (mic / line-in), changes on bars,
+    jumps on drops, pulses with the bass, spins with the highs, cycles a
+    palette. **Pregenerate:** analyses the whole song (sections, per-beat kick)
+    and writes editable cues onto Auto tracks + section markers (builds ramp,
+    blackout before drops, beat pulses); regenerating replaces them.
+- **✗ NEXT: imports** — QLC+ `.qxw`, xLights `.xsq`, MVR (rig only).
 - **Final phase: user documentation.**
 
 ### Stage 2 follow-ups (small, pick any)
@@ -141,7 +146,7 @@ Mostly independent; pick any subset. The laser Stages above are the live part of
 V2.1. Leans: **(P)** pre-programmed, **(L)** live/busking.
 
 - **V2.1 — Effect engine (P).** Waveform-driven per-attribute fixture effects —
-  ✔ done. Laser cue system (BEYOND) — Stages 1–2 ✔, 3a ✔, 3b ✔, 3c next.
+  ✔ done. Laser cue system (BEYOND) — Stages 1–2 ✔, 3a ✔, 3b ✔, 3c ✔.
 - **V2.2 — Groups, palettes & presets.** User-defined groups/selection sets;
   colour/position/beam palettes referenced by name; saveable effect presets.
 - **V2.3 — Cue & cuelist parity (P).** Per-cue fade in/out + crossfade + delay;

@@ -61,9 +61,12 @@ dt = clock.getDelta()
 transport.loopEnd = last cue end          // no track: free-run loops over the show
 transport.update(dt)                      // advance the master clock
 engine.setSelection(editTools.selected)   // feed the "Selection" group
+engine.auto?.update({beat, bands, dt})    // live Auto: song or sound-input bands,
+                                          // the song's beat (free-running when stopped)
 engine.update(transport.time, bpm, audio.bands())
     ├─ fixture cues → write to sink → _flush() merges to UniverseHub
     └─ laser cues   → _renderLaser() evaluates envelopes, drives the LaserRig
+                      (live Auto on: its cueFor(i) replaces the laser tracks)
                       (which also draws the 2D preview canvas)
 for (f of fixtures) f.update(dt)          // fixtures READ the hub, drive 3D
 timeline.frame()                          // waveform, beat grid, playhead
@@ -114,7 +117,12 @@ src/
     CommandPalette.js    Ctrl+K search over every command.
     LivePanel.js         Live workspace: section pads (left), masters (right),
                          now/next strip + song overview (bottom); quantised
-                         jumps; writes engine.masters.
+                         jumps; writes engine.masters. Hosts the AutoPanel
+                         above the pads (live.autoRoot).
+    AutoPanel.js         Live Auto pad (A) + status/meter, and autoForm /
+                         bindAutoForm: the settings form shared with the dialog.
+    AutoShowDialog.js    "Pregenerate an Auto show": energy + sections canvas,
+                         settings, Generate (app.js pregenerate() writes cues).
     Welcome.js           First-run screen: Demo / Empty venue / Open + Simple or
                          Pro + "show me around". Calls back; app.js loads the show.
     Tour.js              5-step spotlight tour (TOUR_STEPS: target selector,
@@ -159,9 +167,23 @@ src/
 
   audio/
     AudioEngine.js       Web-Audio decode, play/pause/seek, peaks() for waveform,
-                         bands() (FFT bass/mid/high) for audio-reactive effects.
+                         bands() (FFT bass/mid/high) for audio-reactive effects;
+                         startInput()/stopInput()/inputBands(): a mic or
+                         line-in on its own analyser (never played back).
     bpm.js               analyzeTempo(): onset envelope + autocorrelation +
                          parabolic interp + downbeat offset.
+
+  auto/                  Stage 3c Auto. Pure; no DOM, no Three.js; Node-testable.
+    analyze.js           analyzeSong(buffer, {bpm, offset}): per-frame bass/high/
+                         rms/onset (one-pole filters, no FFT) -> per-bar energy
+                         (normalised to the song's loud bars) + per-beat kick
+                         -> findSections() on 4-bar phrases (intro, verse,
+                         build, drop, break, outro).
+    director.js          Settings (AUTO_DEFAULTS, normalizeAutoSettings),
+                         PATTERN_TIER (calm/medium/high), generateShow() (the
+                         pregenerated cues + markers, seeded = repeatable) and
+                         LiveDirector (live: smoothed levels, drop / breakdown
+                         detection, bar changes, two virtual cues cueFor(i)).
 
   timeline/
     Transport.js         Master clock (audio time or free-run, looping at
@@ -310,12 +332,13 @@ cue.anim = {
   room:{w,d,h},
   settings:{ bpm, beatOffset, haze, brightness, house },
   fixtures:[ { type, universe, startAddress, label, pos:[x,y,z], rot:[x,y,z], mirror:index|null, laser?:output } ],
-  tracks:[ { name, kind, groupId, mute, solo, open, target?:[fixtureIndex…]|null } ],
+  tracks:[ { name, kind, groupId, mute, solo, open, target?:[fixtureIndex…]|null, auto?:true } ],
   palettes:[ { id, name, colors:[[r,g,b]…] } ],
   patterns:[ { key:'ild:…', name, fps, data:base64 } ],
   cues:[ { kind:'laser', pattern, start, duration, track:index, params, anim?, colorRef?, text?, fps? }
        | { kind:'fixture', name, groupId, start, duration, track:index, layers:[{effectKey, params}] } ],
-  markers:[ { t, name } ],
+  markers:[ { t, name, auto?:true } ],
+  auto:{ intensity, every, palette, groups, imported, alternate, markers, source },
   audioName }
 ```
 Version 1 (≤ v0.3.0) had no `tracks`/`markers` and a `lane` per cue;
@@ -323,7 +346,10 @@ Version 1 (≤ v0.3.0) had no `tracks`/`markers` and a `lane` per cue;
 single `effectKey` + `params`; it opens as a one-layer look. Versions ≤ 3 have
 no targets / palettes / laser output: tracks play on all projectors, the preset
 palettes load, cues keep their own colour. Versions ≤ 4 have no imported
-patterns (the registry is cleared). `applyProject` clears, rebuilds the
+patterns (the registry is cleared). Files without `auto` (any version) get
+the default Auto settings; `auto: true` marks tracks/markers Pregenerate made
+(they're replaced when it runs again). These are optional fields, so the
+version stayed 5. `applyProject` clears, rebuilds the
 room (and re-hangs the house light) and fixtures (relinking mirror pairs by
 index), the tracks and markers, re-adds cues by kind onto their tracks (laser
 `anim` through `loadAnim()`), applies settings, and stops the transport.

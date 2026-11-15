@@ -365,6 +365,38 @@ curves live under the track"; these rules carried over unchanged.)
   outlines from a system font: no font files, no canvas text measuring, fast
   to draw, and it looks like laser lettering. Up to 12 characters, upper case.
 
+### Auto: live and pregenerated, one set of settings (Stage 3c, v0.10.0)
+- **Two modes, because they can know different things.** Live only hears
+  "now", so it reacts: smoothed slow/fast levels, a drop = the fast level
+  jumping well above the slow one, a breakdown = it falling well below.
+  Pregenerate sees the whole song, so it can plan: sections, ramps through
+  builds, a blackout gap *before* a drop, a pulse on every kick. The user asked
+  for both; the settings (intensity, change rate, colours, pattern groups,
+  pairs) are shared so they feel like one feature.
+- **Pregenerate writes ordinary cues**, not a special "auto" object: the show
+  stays editable with every existing tool, plays without the analyser, and
+  saves/undoes like anything else. Its tracks and markers carry `auto: true`
+  so a new take replaces exactly what Auto made (and nothing the user made);
+  edits to Auto cues are lost on regenerate, which the dialog says.
+- **Auto tracks go to the top** (lane 0 wins the laser), so a generated show
+  plays over hand-made laser tracks without deleting them. Mute or delete the
+  Auto track to get them back.
+- **Live Auto overrides the laser tracks** while it's on (`engine.auto`), and
+  is a performance control like the masters: on/off isn't saved or undoable,
+  and leaving Live turns it off so Program never shows a timeline that isn't
+  what's playing.
+- **Repeatable takes:** generation is seeded (mulberry32); same song + settings
+  + seed = same show. Each "new take" uses the next seed.
+- **Cheap analysis, no FFT:** two one-pole filters split bass/highs; bars and
+  beats come from the detected BPM grid. A 4-minute song analyses in well under
+  a second, and values are normalised to the song's own loud bars, so quiet and
+  loud masters give the same show. If the BPM is wrong, sections drift — the
+  dialog tells the user to check it.
+- **Sound input is listened to, never played back** (its analyser isn't
+  connected to the speakers), with echo cancellation / noise suppression off
+  so music isn't treated as noise. With no sound, Auto keeps going on the
+  beat instead of freezing.
+
 ---
 
 ## Project persistence & undo

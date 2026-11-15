@@ -19,8 +19,10 @@ import { makeLayer } from '../show/looks.js';
 import { importedPatterns, setImported, cleanText } from '../laser/patterns.js';
 import { serializeImported, loadImported, clampFps } from '../laser/ilda.js';
 import { defaultPalettes, normalizePalettes, normalizeColorRef, normalizeOutput, isDefaultOutput } from '../laser/palettes.js';
+import { normalizeAutoSettings } from '../auto/director.js';
 
-// 5: imported ILDA patterns, cue text (Text pattern) + frame rate
+// 5: imported ILDA patterns, cue text (Text pattern) + frame rate;
+//    later in 5 (optional fields): Auto settings, auto tracks/markers
 // 4: laser projectors (output settings, track targets) + palettes
 // 3: fixture cues are looks (layers) · 2: named tracks + markers · 1: anonymous lanes
 export const PROJECT_VERSION = 5;
@@ -95,6 +97,7 @@ export function serializeProject(ctx) {
       name: t.name, kind: t.kind, groupId: t.groupId, mute: t.mute, solo: t.solo, open: t.open,
       // laser tracks: null = every projector, else fixture indices
       target: t.target ? t.target.filter((f) => idx.has(f)).map((f) => idx.get(f)) : null,
+      auto: t.auto || undefined, // made by Pregenerate
     })),
     // imported ILDA patterns travel inside the show file
     patterns: importedPatterns().map(serializeImported),
@@ -114,7 +117,8 @@ export function serializeProject(ctx) {
         start: c.start, duration: c.duration, track: trackIdx.get(c.track) ?? 0,
         layers: c.layers.map((l) => ({ effectKey: l.effectKey, params: structuredClone(l.params) })),
       })),
-    markers: (engine.markers || []).map((m) => ({ t: m.t, name: m.name })).sort((x, y) => x.t - y.t),
+    markers: (engine.markers || []).map((m) => ({ t: m.t, name: m.name, auto: m.auto || undefined })).sort((x, y) => x.t - y.t),
+    auto: normalizeAutoSettings(engine.autoSettings), // Auto (live + pregenerate) settings
     audioName: audio.name || null,
   };
 }
@@ -131,7 +135,7 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
   engine.tracks.length = 0;
   engine.markers = (data.markers || [])
     .filter((m) => m && Number.isFinite(m.t))
-    .map((m) => ({ t: Math.max(0, m.t), name: String(m.name || 'Marker') }))
+    .map((m) => (m.auto ? { t: Math.max(0, m.t), name: String(m.name || 'Marker'), auto: true } : { t: Math.max(0, m.t), name: String(m.name || 'Marker') }))
     .sort((a, b) => a.t - b.t);
 
   const r = data.room || { w: 14, d: 18, h: 6 };
@@ -146,6 +150,7 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
   });
 
   engine.palettes = normalizePalettes(data.palettes) ?? defaultPalettes();
+  engine.autoSettings = normalizeAutoSettings(data.auto);
   setImported(loadImported(data.patterns));
 
   // Tracks: saved ones (v2), or derived from the old lanes (v1).
@@ -163,7 +168,7 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
     name: t.name, kind: t.kind === 'laser' ? 'laser' : 'fixture', groupId: t.groupId || 'movers',
     // a saved projector list -> those fixtures (ones that failed to load drop out)
     target: Array.isArray(t.target) ? t.target.map((i) => made[i]).filter((f) => f && f.laser) : null,
-    mute: !!t.mute, solo: !!t.solo, open: !!t.open,
+    mute: !!t.mute, solo: !!t.solo, open: !!t.open, auto: !!t.auto,
   }));
   // A cue pointing at a missing / wrong-kind track gets a fresh track of its kind.
   const trackFor = (c, i) => {

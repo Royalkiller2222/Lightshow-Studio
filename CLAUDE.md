@@ -81,6 +81,9 @@ Show engine (timeline cues)            External console
   keyframe math), `palettes.js` (palettes + projector output defaults) and
   `LaserRig.js` (one projector's 3D beams + galvo preview; each Laser projector
   fixture owns one, plus a default one when the rig has none).
+- **`src/auto/`** — Auto (Stage 3c): `analyze.js` (whole-song bars, beats,
+  sections) and `director.js` (settings, `generateShow` for Pregenerate,
+  `LiveDirector` for live Auto). Pure, Node-testable.
 - **UI (`src/ui/`)** — the window is *top bar / [library | 3D view | inspector] /
   bottom area*. `Shell` (Build / Program / Live workspaces, resizable panels,
   Simple/Pro), `TopBar`, `ViewportOverlay`, `Inspector`, `FixtureLibrary`,
@@ -104,7 +107,7 @@ Two tracks, both user-approved:
    user runs **primarily laser shows**. Laser Stage 1 (patterns + values) and
    Stage 2 (keyframe envelopes) are done; Stage 3 is split: **3a projectors +
    palettes ✔ (v0.8.0)**, **3b more patterns + ILDA import ✔ (v0.9.0)**,
-   **3c an audio-reactive Auto pad in Live (next)**. Then imports (QLC+, xLights, MVR), and a
+   **3c Auto — live + pregenerated ✔ (v0.10.0)**. Next: imports (QLC+, xLights, MVR), then a
    final user-documentation phase. Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**

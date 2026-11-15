@@ -4,6 +4,8 @@
 // (brightest wins), colour/position LTP (the higher track wins). Fixture cues
 // are looks (layers of effects). Laser tracks target projectors (every Laser
 // fixture, or chosen ones); each projector draws its own top active laser cue.
+// With live Auto on (engine.auto, a LiveDirector), Auto drives every projector
+// instead of the laser tracks; fixture cues keep playing.
 
 import { EFFECT_BY_KEY, EFFECTS, writeAttr, writeRGB } from './effects.js';
 import { makeLayer, normalizeLayers } from './looks.js';
@@ -52,6 +54,7 @@ export class ShowEngine {
     this.palettes = defaultPalettes(); // named laser colour palettes (saved with the show)
     this.beatOffset = 0; // seconds to the song's first beat (set by app each frame), for palette cycles
     this._selection = []; // current viewport selection, for the "Selection" group
+    this.auto = null; // live Auto (src/auto/director.js LiveDirector) while it's on
 
     // Per-frame merge buffer. Effects write here via `sink`; we flush once per
     // fixture. Intensity is HTP (brightest cue wins); colour/position are LTP
@@ -104,9 +107,10 @@ export class ShowEngine {
   }
 
   // ---------------------------------------------------------------- tracks
-  addTrack({ name, kind = 'fixture', groupId = 'movers', target = null, mute = false, solo = false, open = false, index = null } = {}) {
+  addTrack({ name, kind = 'fixture', groupId = 'movers', target = null, mute = false, solo = false, open = false, index = null, auto = false } = {}) {
     const laser = kind === 'laser';
     const track = { id: _tid++, name: name || (laser ? 'Laser' : 'Fixtures'), kind, groupId: laser ? null : groupId, target: laser && Array.isArray(target) ? target.slice() : null, mute, solo, open };
+    if (auto && laser) track.auto = true; // written by Pregenerate (replaced when it runs again)
     if (index == null || index >= this.tracks.length) this.tracks.push(track);
     else this.tracks.splice(Math.max(0, index), 0, track);
     this.syncTracks();
@@ -244,7 +248,8 @@ export class ShowEngine {
       if (c.kind !== 'laser' || time < c.start || time >= c.start + c.duration) continue;
       if (this.audible(c)) active.push(c);
     }
-    const beat = ((time - (this.beatOffset || 0)) * (bpm || 120)) / 60;
+    // live Auto keeps its own beat clock (it runs with the transport stopped too)
+    const beat = this.auto ? this.auto.beat : ((time - (this.beatOffset || 0)) * (bpm || 120)) / 60;
     const draw = (rig, out, onIt) => {
       let top = null;
       for (const c of active) {
@@ -253,6 +258,11 @@ export class ShowEngine {
       }
       this._drawCue(rig, out, top, time, beat);
     };
+    if (this.auto) {
+      if (!projs.length) { if (fb) this._drawCue(fb, null, this.auto.cueFor(0), time, beat); return; }
+      projs.forEach((pr, i) => this._drawCue(pr.laser, pr.laserOut, this.auto.cueFor(i), time, beat));
+      return;
+    }
     if (!projs.length) { if (fb) draw(fb, null, () => true); return; }
     for (const pr of projs) draw(pr.laser, pr.laserOut, (t) => !t || !t.target || t.target.includes(pr));
   }

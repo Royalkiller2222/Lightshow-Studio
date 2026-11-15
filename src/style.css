@@ -881,6 +881,59 @@ details.more > .more-body { padding: 2px 0 4px; }
 .lv-pname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv-ptime { font: 11px var(--mono); color: var(--text-3); }
 .lv-quant { margin-top: 14px; }
+/* live Auto (Stage 3c): the big pad, its meter, the shared settings form */
+.lv-autobox { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.lv-auto {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 100%;
+  padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line-2);
+  background: var(--bg-2); color: var(--text-1); text-align: left; cursor: pointer;
+}
+.lv-auto:hover { background: var(--bg-3); }
+.lv-auto[aria-pressed="true"] { border-color: var(--c-laser); background: color-mix(in srgb, var(--c-laser) 16%, var(--bg-2)); box-shadow: inset 3px 0 0 var(--c-laser); }
+.lv-auto-top { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.lv-auto-top kbd { margin-left: auto; }
+.lv-auto[aria-pressed="true"] .lv-auto-top .ico { color: var(--c-laser-hi); }
+.lv-auto-status { font-size: 12px; color: var(--text-2); min-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv-meter { display: block; height: 4px; border-radius: 2px; background: var(--bg-0); overflow: hidden; }
+.lv-meter > span { display: block; height: 100%; width: 0; background: var(--c-laser-hi); transition: width 80ms linear; }
+.auto-form { margin-top: 10px; }
+.auto-form .seg { flex-wrap: wrap; }
+/* the Live column is narrow: label above its control (switches stay on one row) */
+.lv-autobox .prop:not(:has(.switch)) { grid-template-columns: minmax(0, 1fr); gap: 4px; margin-bottom: 8px; }
+.lv-autobox .ctl > .seg { width: 100%; flex-wrap: nowrap; }
+.lv-autobox .ctl > .seg > button { flex: 1; justify-content: center; }
+.auto-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; height: var(--h-sm); padding: 0 8px;
+  border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2);
+  color: var(--text-2); font-size: 12px; cursor: pointer; user-select: none;
+}
+.chip input { display: none; }
+.chip:has(input:checked) { border-color: var(--accent-line); background: var(--accent-soft); color: var(--text-1); }
+
+/* "Pregenerate an Auto show" dialog */
+.ad {
+  position: fixed; z-index: 1001; top: 10vh; left: 50%;
+  width: min(620px, calc(100vw - 32px)); max-height: 80vh;
+  transform: translateX(-50%); display: flex; flex-direction: column;
+  border-radius: var(--r-lg); border: 1px solid var(--line-2);
+  background: var(--bg-1); box-shadow: var(--shadow); overflow: hidden;
+}
+.ad[hidden], .cmdk-back[hidden] { display: none; }
+.ad-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.ad-title { flex: 1; font-size: 14px; font-weight: 600; }
+.ad-body { padding: 14px; overflow: auto; }
+.ad-body .tip { margin-top: 12px; }
+.ad-energy { display: block; width: 100%; height: 84px; border-radius: var(--r-sm); background: var(--bg-0); }
+.ad-secs { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.ad-sec {
+  padding: 2px 8px; border-radius: 10px; font-size: 11.5px; color: var(--text-1);
+  border: 1px solid color-mix(in srgb, var(--k) 60%, transparent);
+  background: color-mix(in srgb, var(--k) 18%, transparent);
+}
+.ad-p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.ad-foot { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.ad-foot .grow { flex: 1; }
 .lv-fader { display: block; margin: 0 0 16px; }
 .lv-fname { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-2); margin-bottom: 4px; }
 .lv-fval { font: 12px var(--mono); color: var(--text-1); }

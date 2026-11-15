@@ -2,6 +2,7 @@
 //   left   — section pads, one per timeline marker (+ Start). Click or press 1–9
 //            to jump there; Pro can quantise the jump to the next beat or bar
 //            so the cut lands on the music.
+//            Above the pads: Auto (ui/AutoPanel.js), mounted by app.js.
 //   right  — masters: brightness, speed, size, blackout (B), sparks, fullscreen (F).
 //   bottom — previous / play / next, what's playing now and next, and a song
 //            overview you can click to jump.
@@ -36,6 +37,8 @@ export class LivePanel {
       <div class="ph"><span class="ph-title">Sections</span>
         <button type="button" class="btn ghost icon sm" data-act="hide" title="Hide" aria-label="Hide the sections">${icon('panel-left', 'sm')}</button></div>
       <div class="pbody">
+        <div class="lv-autobox" data-role="auto"></div>
+        <div class="sec-title">Sections</div>
         <div class="lv-pads" data-role="pads"></div>
         <div class="pro lv-quant">
           <div class="sec-title">Jump on</div>
@@ -43,6 +46,7 @@ export class LivePanel {
         </div>
         <div class="tip" data-role="pad-tip" style="margin-top:12px">${icon('help', 'sm')}<div>Pads come from the markers on your timeline. Add them in Program with <b>M</b> (Intro, Verse, Drop…). Press <b>1–9</b> to jump.</div></div>
       </div>`;
+    this.autoRoot = roots.sections.querySelector('[data-role="auto"]'); // app.js mounts the AutoPanel here
     roots.sections.querySelector('[data-act="hide"]').addEventListener('click', () => shell.togglePanel('left', false));
     roots.sections.addEventListener('click', (e) => {
       const pad = e.target.closest('[data-pad]');

@@ -3,6 +3,53 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.10.0 — 2026-11-15
+
+Laser Stage 3c: **Auto**. The music can drive the lasers in two ways: live in
+the Live workspace, or as a pregenerated show written onto the timeline that
+you can then edit.
+
+**Install:** download `LightshowStudio-Setup-0.10.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Live Auto (Live workspace)
+- A big **Auto** pad at the top of the Sections panel (or press **A**). While
+  it's on, Auto drives every laser projector from what it hears; turning it
+  off hands the lasers back to the timeline. Leaving Live turns it off.
+- It picks patterns by energy (calm / medium / high), changes them on the
+  bar, jumps straight to a high-energy pattern when a drop hits, and calms
+  down when the music breaks down. The bass pulses size and brightness, the
+  highs drive the spin, and colours cycle through a palette on the beat.
+- **Listen to** the song loaded in Program, or a **sound input** (a
+  microphone or line-in) for music playing from somewhere else. The input is
+  only listened to; it isn't played through the speakers. With no sound it
+  keeps going on the beat.
+- A level meter and a status line show what Auto is doing ("High · Beam fan").
+- With two or more projectors, **Pairs** gives odd and even projectors
+  different patterns spinning opposite ways.
+
+### Pregenerated Auto show
+- **Auto show** in the timeline toolbar (or "Pregenerate a show…" in Live, or
+  Ctrl+K) reads the **whole song** first, so it can plan ahead: it finds the
+  sections (Intro, Verse, Build, Drop, Break, Outro) and shows them over the
+  song's energy before you generate.
+- It writes ordinary, editable laser cues onto an **Auto** track (or **Auto A**
+  / **Auto B** for projector pairs) at the top of the timeline: builds ramp up
+  in size, brightness and spin; there's a short blackout right before each
+  drop; drops change pattern every couple of bars, and the brightness pulses
+  on every kick; calm parts get slow, long looks.
+- A marker is added for each section, so the sections become pads in Live.
+- Generating again makes a **new take** and replaces the earlier Auto tracks.
+  Ctrl+Z undoes it.
+
+### Settings (shared by both modes, saved with the show)
+- Intensity (Calm / Balanced / Wild), how often to change (with the music, or
+  every 1–8 bars), colours (by mood or one palette), which pattern groups to
+  use (plus your imported ILDA patterns), Pairs, and section markers.
+- Older show files open with the default settings. The file version stays 5;
+  the new fields are optional.
+
 ## v0.9.0 — 2026-11-14
 
 Laser Stage 3b: a much bigger pattern library, a Text pattern, and import of

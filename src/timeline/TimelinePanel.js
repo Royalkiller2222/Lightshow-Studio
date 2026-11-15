@@ -30,7 +30,7 @@ const MAX_PPS = 400;       // most zoomed-in: px per second
 
 export class TimelinePanel {
   /**
-   * opts: onLoadAudio(file), onEdit() (undo checkpoint),
+   * opts: onLoadAudio(file), onEdit() (undo checkpoint), onAutoShow(),
    *       onSelect(kind: 'cue'|'track'|'marker'|null, obj),
    *       onCueMoved(cue) (dragged/resized), onCurveChange(cue) (keys edited here),
    *       laserTargetLabel(track): projector names for a laser track's header, or ''
@@ -62,6 +62,7 @@ export class TimelinePanel {
         <button type="button" class="btn sm" data-act="add-marker" title="Add a section marker at the playhead (M)">${icon('flag', 'sm')}Marker</button>
         <button type="button" class="btn sm" data-act="add-laser-track" title="Add a laser track">${icon('plus', 'sm')}Laser track</button>
         <button type="button" class="btn sm" data-act="add-fixture-track" title="Add a fixture track">${icon('plus', 'sm')}Fixture track</button>
+        <button type="button" class="btn sm" data-act="auto-show" title="Pregenerate a laser show from the song's builds, drops and breaks">${icon('sparkles', 'sm')}Auto show</button>
         <span class="tl-zoom">
           <button type="button" class="btn ghost icon sm" data-act="zoom-out" title="Zoom out (Ctrl+wheel)" aria-label="Zoom out">${icon('minus', 'sm')}</button>
           <button type="button" class="btn ghost icon sm" data-act="zoom-in" title="Zoom in (Ctrl+wheel)" aria-label="Zoom in">${icon('plus', 'sm')}</button>
@@ -169,6 +170,7 @@ export class TimelinePanel {
       else if (act === 'zoom-in') this.zoom(1.5);
       else if (act === 'zoom-out') this.zoom(1 / 1.5);
       else if (act === 'fit') this.fit();
+      else if (act === 'auto-show') this.o.onAutoShow?.();
     });
     audioFile.addEventListener('change', () => {
       if (audioFile.files[0]) this.o.onLoadAudio?.(audioFile.files[0]);
