@@ -8,7 +8,7 @@
 
 import { icon } from './icons.js';
 import { esc } from './dom.js';
-import { INTENSITIES, CHANGE_RATES, AUTO_GROUPS } from '../auto/director.js';
+import { INTENSITIES, CHANGE_RATES, AUTO_GROUPS, MOODS, MOOD_PALETTES } from '../auto/director.js';
 import { patternByKey, importedPatterns } from '../laser/patterns.js';
 
 /**
@@ -22,9 +22,10 @@ export function autoForm(s, { palettes = [], projectors = 1, live = false } = {}
   const hasImports = importedPatterns().length > 0;
   return `<div class="auto-form">
     ${live ? row('Listen to', seg('source', [{ key: 'song', label: 'Song' }, { key: 'input', label: 'Sound input' }], 'Listen to'), '', 'Song: the track loaded in Program. Sound input: a microphone or line-in, for music playing from somewhere else.') : ''}
+    ${live ? '' : row('Mood', `<select data-auto="mood" aria-label="Mood">${MOODS.map((m) => `<option value="${m.key}"${s.mood === m.key ? ' selected' : ''}>${esc(m.label)}</option>`).join('')}</select>`, '', 'The feeling of the show. From the music: every section gets its own mood (energy and how bright or dark it sounds). A chosen mood sets the colours, the patterns that suit it and the pace everywhere')}
     ${row('Intensity', seg('intensity', INTENSITIES, 'Intensity'), '', 'How energetic Auto is: more movement, faster changes and higher-energy patterns')}
     ${row('Change', `<select data-auto="every" aria-label="How often the pattern changes">${CHANGE_RATES.map((r) => `<option value="${r.key}"${s.every === r.key ? ' selected' : ''}>${r.key === 'auto' ? 'With the music' : `Every ${r.label}`}</option>`).join('')}</select>`, live ? 'pro' : '', 'How often the pattern changes. With the music: often in drops, rarely in calm parts')}
-    ${row('Colours', `<select data-auto="palette" aria-label="Colours">${[`<option value="auto"${s.palette === 'auto' ? ' selected' : ''}>By mood (Ice, Fire, Club)</option>`, ...palettes.map((p) => `<option value="${esc(p.id)}"${s.palette === p.id ? ' selected' : ''}>${esc(p.name)}</option>`)].join('')}</select>`, live ? 'pro' : '', 'Which palette Auto cycles through')}
+    ${row('Colours', `<select data-auto="palette" aria-label="Colours">${[`<option value="auto"${s.palette === 'auto' ? ' selected' : ''}>${live ? 'By mood (Ice, Fire, Club)' : `By mood (${Object.values(MOOD_PALETTES).map((p) => p.name).join(', ')})`}</option>`, ...palettes.map((p) => `<option value="${esc(p.id)}"${s.palette === p.id ? ' selected' : ''}>${esc(p.name)}</option>`)].join('')}</select>`, live ? 'pro' : '', 'Which palette Auto cycles through')}
     ${row('Patterns', `<span class="auto-chips">${AUTO_GROUPS.map((g) => `<label class="chip"><input type="checkbox" data-auto="groups" value="${g.key}" ${s.groups.includes(g.key) ? 'checked' : ''} />${esc(g.label)}</label>`).join('')}${hasImports ? `<label class="chip"><input type="checkbox" data-auto="imported" ${s.imported ? 'checked' : ''} />Imported</label>` : ''}</span>`, live ? 'pro' : '', 'Which pattern groups Auto may use (Text is never used)')}
     ${projectors > 1 ? `<div class="${live ? 'pro' : ''}">${sw('alternate', 'Pairs', 'Odd and even projectors get different patterns, spinning opposite ways')}</div>` : ''}
     ${live ? '' : sw('markers', 'Markers', 'Add a marker for each section found (they become pads in Live)')}

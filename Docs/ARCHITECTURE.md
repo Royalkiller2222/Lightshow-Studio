@@ -130,7 +130,7 @@ src/
                          above the pads (live.autoRoot).
     AutoPanel.js         Live Auto pad (A) + status/meter, and autoForm /
                          bindAutoForm: the settings form shared with the dialog.
-    AutoShowDialog.js    "Pregenerate an Auto show": energy + sections canvas,
+    AutoShowDialog.js    "Pregenerate an Auto show": energy + sections + drops canvas,
                          settings, Generate (app.js pregenerate() writes cues).
     Welcome.js           First-run screen: Demo / Empty venue / Open + Simple or
                          Pro + "show me around". Calls back; app.js loads the show.
@@ -208,17 +208,26 @@ src/
                          planRig() (centre, floor, fit room) and
                          mvrSource() for the dialog.
 
-  auto/                  Stage 3c Auto. Pure; no DOM, no Three.js; Node-testable.
-    analyze.js           analyzeSong(buffer, {bpm, offset}): per-frame bass/high/
-                         rms/onset (one-pole filters, no FFT) -> per-bar energy
-                         (normalised to the song's loud bars) + per-beat kick
-                         -> findSections() on 4-bar phrases (intro, verse,
-                         build, drop, break, outro).
-    director.js          Settings (AUTO_DEFAULTS, normalizeAutoSettings),
-                         PATTERN_TIER (calm/medium/high), generateShow() (the
-                         pregenerated cues + markers, seeded = repeatable) and
-                         LiveDirector (live: smoothed levels, drop / breakdown
-                         detection, bar changes, two virtual cues cueFor(i)).
+  auto/                  Auto (3c; content-aware since 5a). Pure; no DOM, no
+                         Three.js; Node-testable.
+    analyze.js           analyzeSong(buffer, {bpm, offset}): frameFeatures()
+                         (own radix-2 FFT, 1024 pt / hop: 5 bands, centroid,
+                         low/high flux, high-band flatness) -> per-bar energy,
+                         bass, high, busy, bright, noise, rate, tension, fill
+                         (normalised to the song) + per-beat kick ->
+                         downbeatPhase(), findDrops() (bass + energy lift),
+                         findSections() (novelty cuts on 4 bars anchored to
+                         the first drop, builds by rising tension, kinds,
+                         repeat groups, moodOf()).
+    director.js          Settings (AUTO_DEFAULTS, normalizeAutoSettings, MOODS),
+                         PATTERN_TIER (calm/medium/high), PATTERN_FEEL (mood
+                         weights), MOOD_PALETTES; generateShow() (phrase-
+                         aligned cues, build risers, dark gap + unison drop
+                         openings, hero drop, motifs on repeats, fill
+                         strobes; seeded = repeatable; returns cues, markers
+                         and the mood palettes it used) and LiveDirector
+                         (live: smoothed levels, drop / breakdown detection,
+                         bar changes, two virtual cues cueFor(i)).
 
   timeline/
     Transport.js         Master clock (audio time or free-run, looping at

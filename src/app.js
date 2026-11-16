@@ -375,6 +375,8 @@ function pregenerate() {
   setAuto(false);
   for (const t of autoTracks()) engine.removeTrack(t.id);
   engine.markers = engine.markers.filter((m) => !m.auto);
+  // mood palettes the show doesn't have yet (Sunrise, Deep…) join it, editable like any palette
+  for (const p of show.palettes) if (!engine.palettes.some((x) => x.id === p.id)) engine.palettes.push(p);
   const lane = {};
   if (pairs) {
     lane.A = engine.addTrack({ name: 'Auto A', kind: 'laser', index: 0, auto: true, target: projs.filter((_, i) => i % 2 === 0) });

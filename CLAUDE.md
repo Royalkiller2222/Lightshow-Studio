@@ -81,8 +81,9 @@ Show engine (timeline cues)            External console
   keyframe math), `palettes.js` (palettes + projector output defaults) and
   `LaserRig.js` (one projector's 3D beams + galvo preview; each Laser projector
   fixture owns one, plus a default one when the rig has none).
-- **`src/auto/`** — Auto (Stage 3c): `analyze.js` (whole-song bars, beats,
-  sections) and `director.js` (settings, `generateShow` for Pregenerate,
+- **`src/auto/`** — Auto (Stage 3c, content-aware since 5a): `analyze.js`
+  (own FFT features → bars with tension, drops, sections, repeats, moods,
+  fills) and `director.js` (settings, `generateShow` for Pregenerate,
   `LiveDirector` for live Auto). Pure, Node-testable.
 - **`src/import/`** — file imports: `zip.js` + `xml.js` (our own readers, no
   dependency), `rig.js` (shared: type guess, placement, addressing),
@@ -113,8 +114,9 @@ Two tracks, both user-approved:
    Stage 2 (keyframe envelopes) are done; Stage 3 is split: **3a projectors +
    palettes ✔ (v0.8.0)**, **3b more patterns + ILDA import ✔ (v0.9.0)**,
    **3c Auto — live + pregenerated ✔ (v0.10.0)**. Imports: **4a MVR rig ✔ (v0.11.0)**,
-   **4b QLC+ `.qxw` ✔ (v0.12.0)**, **4c xLights `.xsq` ✔ (v0.13.0)**; next the
-   final user-documentation phase. Shows are
+   **4b QLC+ `.qxw` ✔ (v0.12.0)**, **4c xLights `.xsq` ✔ (v0.13.0)**. Then **content-aware Auto**:
+   **5a smarter listening + director ✔ (v0.14.0)**, **5b song map in the
+   Pregenerate dialog** next; then the final user-documentation phase. Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**
 

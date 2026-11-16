@@ -387,7 +387,7 @@ curves live under the track"; these rules carried over unchanged.)
   what's playing.
 - **Repeatable takes:** generation is seeded (mulberry32); same song + settings
   + seed = same show. Each "new take" uses the next seed.
-- **Cheap analysis, no FFT:** two one-pole filters split bass/highs; bars and
+- **Cheap analysis, no FFT (3c; replaced in 5a, see below):** two one-pole filters split bass/highs; bars and
   beats come from the detected BPM grid. A 4-minute song analyses in well under
   a second, and values are normalised to the song's own loud bars, so quiet and
   loud masters give the same show. If the BPM is wrong, sections drift — the
@@ -396,6 +396,46 @@ curves live under the track"; these rules carried over unchanged.)
   connected to the speakers), with echo cancellation / noise suppression off
   so music isn't treated as noise. With no sound, Auto keeps going on the
   beat instead of freezing.
+
+### Content-aware Pregenerate (Stage 5a, v0.14.0)
+- **Rules on real features, not machine learning.** The user asked for Auto
+  to "understand drops, when to change lasers, emotion". A trained model
+  would need a runtime and a dependency (hard constraint 4) and couldn't be
+  tuned by reading it. EDM structure is regular enough for rules on good
+  features, and every rule can be explained and tested on a synthetic song
+  (`src/auto/` stays pure and Node-testable).
+- **An FFT after all.** 3c's two one-pole filters couldn't tell a riser from
+  a lead or a snare roll from hats. Our own 1024-point radix-2 FFT (hop =
+  1024, about 30 lines, no dependency) gives 5 bands, brightness (centroid),
+  low/high spectral flux and high-band flatness ("noise"). 2.5 minutes
+  analyse in about 0.2 s.
+- **Tension is the build detector.** Builds are where the snare rate, noise
+  and highs climb while the bass leaves: `tension` per bar, and a build is
+  the last 16/8/4 bars before a drop whose tension climbs quarter by quarter
+  and which don't start louder than they end. That second check stops a
+  build from swallowing the tail of the previous drop.
+- **Drops anchor the grid.** Auto-BPM's downbeat can be a beat off; drops are
+  the most reliable bar ones in dance music, so beat-level bass lifts vote on
+  the phase (only moved with ≥ 60% of votes), and section cuts snap to the
+  4-bar grid counted from the first drop.
+- **Sections from change, kinds from content.** Cuts come where the feature
+  vector jumps (novelty), plus forced cuts at drops and build starts. A
+  "break" needs a real drop in energy from the section before it, otherwise
+  it's a verse.
+- **Mood = energy × brightness** (euphoric / aggressive / dreamy / dark), a
+  simple valence-arousal map. The user chose "audio + optional mood": each
+  section's mood comes from the audio unless an overall Mood is set. Mood
+  picks the palette, the speed, the hold length and weights the patterns
+  (`PATTERN_FEEL`).
+- **Direction follows how designers program.** Changes on phrase boundaries
+  (and right after a fill, the musical "here comes something"); a build is
+  one rising cue, not many; a dark gap of ¾ beat before a drop so the drop
+  hits; the drop opens in unison with a flash; the strongest patterns are
+  saved for the biggest drop and earlier drops stay smaller, so the show
+  has an arc; repeats reuse their looks (motifs) and grow a little.
+- **Mood palettes are added to the show when used,** as ordinary palettes,
+  so cues can reference them, they save and undo, and the user can edit
+  them. Live Auto keeps its own three (Ice / Fire / Club).
 
 ### Importing an MVR rig (Stage 4a, v0.11.0)
 - **Rig only, mapped to our types.** We don't simulate GDTF fixtures channel

@@ -3,6 +3,51 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.14.0 — 2026-11-16
+
+Content-aware Auto, part 1: **Pregenerate now listens to the song properly.**
+It finds the drops and the builds, changes looks where the music changes,
+and gives each section a mood.
+
+**Install:** download `LightshowStudio-Setup-0.14.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Hearing the song
+- **Drops** are found where the bass and the energy jump together. They are
+  marked ▲ on the song overview in the Pregenerate dialog.
+- **The bar grid follows the drops.** If the detected downbeat is a beat off,
+  the sections are shifted so that the drops start a phrase.
+- **Sections** come from how the sound changes: loudness, bass, brightness
+  and busyness. Cuts snap to 4-bar phrases.
+- **Builds** are found by rising tension: snare rolls speeding up, noise
+  risers, the highs climbing while the bass drops out.
+- **Repeats:** a second chorus or drop that sounds like the first is
+  recognised as a repeat.
+- **Fills:** a drum fill closing a phrase is detected.
+- **Mood:** each section gets a mood from its energy and brightness:
+  Euphoric, Aggressive, Dreamy or Dark. Hover a section chip to see it.
+
+### Directing the show
+- **Looks change on phrase boundaries,** and right after a fill. Calm
+  sections hold longer than drops.
+- **A build is one rising cue.** The shape tightens, the spin speeds up and
+  the brightness pulses with the snare roll. The build then goes dark for
+  just under a beat before the drop.
+- **A drop opens big.** Both lanes play the same pattern in unison (mirrored
+  spin), with a flash and a size pop.
+- **The biggest drop gets the best.** Two strong patterns are held back for
+  it, and earlier drops stay a little smaller. Each repeat grows a little.
+- **Repeats reuse their looks,** so the second chorus feels like the first.
+- **Fills** get a 16th-note strobe.
+- **New Mood setting** in the Pregenerate dialog:
+  - **From the music** (the default) reads each section's mood.
+  - **Euphoric, Dark, Dreamy or Aggressive** colours the whole show. It also
+    changes how fast the show moves and which patterns it picks.
+- **Four mood palettes:** Sunrise, Acid, Dream and Deep. They are added to
+  the show when used, and you can edit them like any palette.
+- Live Auto is unchanged.
+
 ## v0.13.0 — 2026-11-16
 
 Imports, part 3: **bring in an xLights sequence** (`.xsq`) as timeline

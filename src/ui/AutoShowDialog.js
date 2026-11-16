@@ -1,11 +1,12 @@
 // "Pregenerate an Auto show": reads the whole song (auto/analyze.js), shows
-// what it found — the energy of every bar and the sections (Intro, Build,
-// Drop…) — and writes an editable laser show onto the timeline with the
+// what it found — the energy of every bar, the sections (Intro, Build,
+// Drop…) with their mood, and where each drop hits — and writes an editable laser show onto the timeline with the
 // shared Auto settings. Generating again replaces the earlier Auto tracks with
 // a fresh take (a new seed).
 
 import { icon } from './icons.js';
 import { esc, fmtTime } from './dom.js';
+import { MOOD_NAMES } from '../auto/analyze.js';
 import { autoForm, bindAutoForm } from './AutoPanel.js';
 
 // section colours come from the CSS tokens
@@ -69,8 +70,8 @@ export class AutoShowDialog {
     const n = this.d.autoTrackCount();
     this.root.innerHTML = `${head}<div class="ad-body">
       <canvas class="ad-energy" data-role="energy" height="84" aria-label="The song's energy per bar, with its sections"></canvas>
-      <div class="ad-secs">${an.sections.map((s) => `<span class="ad-sec" style="--k:var(${KIND_VAR[s.kind]})" title="${esc(s.name)}: ${fmtTime(s.t, false)}–${fmtTime(s.end, false)}">${esc(s.name)}</span>`).join('')}</div>
-      <p class="ad-p muted small">${an.sections.length} section${an.sections.length === 1 ? '' : 's'} · ${an.bars.length} bars at ${Math.round(an.bpm * 10) / 10} BPM · ${fmtTime(an.duration, false)}. Sections come from how loud and busy each bar is; check the BPM in the top bar if the grid looks off.</p>
+      <div class="ad-secs">${an.sections.map((s) => `<span class="ad-sec" style="--k:var(${KIND_VAR[s.kind]})" title="${esc(s.name)}: ${fmtTime(s.t, false)}–${fmtTime(s.end, false)}${s.mood ? ` · ${MOOD_NAMES[s.mood]}` : ''}${s.repeat ? ' · a repeat' : ''}">${esc(s.name)}</span>`).join('')}</div>
+      <p class="ad-p muted small">${summary(an)}</p>
       <div data-role="form"></div>
       <div class="tip">${icon('help', 'sm')}<div>${this.d.projectors() > 1 && this.d.getSettings().alternate ? 'Adds <b>Auto A</b> and <b>Auto B</b> laser tracks (odd and even projectors) at the top of the timeline. They play' : 'Adds an <b>Auto</b> laser track at the top of the timeline. It plays'} over your other laser tracks, and every cue can be edited.${n ? ` <b>Replaces the ${n === 1 ? 'earlier Auto track' : `${n} earlier Auto tracks`}</b> (and any edits to ${n === 1 ? 'it' : 'them'}).` : ''} Ctrl+Z undoes it.</div></div>
       </div>
@@ -110,8 +111,26 @@ export class AutoShowDialog {
       const h = Math.max(2, b.energy * (H - 18));
       g.fillRect(x(b.t), H - h, bw, h);
     });
+    // where each drop hits
+    g.fillStyle = token('--text-1');
+    for (const d of an.drops || []) {
+      const dx = x(d.t);
+      g.beginPath(); g.moveTo(dx - 5, H); g.lineTo(dx + 5, H); g.lineTo(dx, H - 8); g.closePath(); g.fill();
+    }
     g.font = `600 11px ${token('--font')}`;
     g.fillStyle = token('--text-1');
     for (const s of an.sections) if (x(s.end) - x(s.t) > 40) g.fillText(s.name, x(s.t) + 4, 13);
   }
+}
+
+/** One line on what the analysis found. */
+function summary(an) {
+  const n = (k) => an.sections.filter((s) => s.kind === k).length;
+  const plural = (c, w) => `${c} ${w}${c === 1 ? '' : 's'}`;
+  const parts = [plural(an.sections.length, 'section')];
+  if ((an.drops || []).length) parts.push(`${plural(an.drops.length, 'drop')} (▲)`);
+  if (n('build')) parts.push(plural(n('build'), 'build'));
+  const head = `${parts.join(' · ')} · ${an.bars.length} bars at ${Math.round(an.bpm * 10) / 10} BPM · ${fmtTime(an.duration, false)}.`;
+  const grid = an.phase ? ` The drops land ${plural(an.phase, 'beat')} after the top bar's downbeat, so the sections follow the drops.` : '';
+  return `${head}${grid} Sections come from how the sound changes; hover one for its mood. Check the BPM in the top bar if the grid looks off.`;
 }
