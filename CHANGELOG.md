@@ -3,6 +3,32 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.16.0 — 2026-11-16
+
+**A user guide**, in the app and on GitHub. Thirteen pages with
+screenshots: getting started, a first show from an empty venue, then a
+reference for the rig, the timeline, laser cues, fixture looks, Auto, Live,
+importing, DMX output, keyboard shortcuts and troubleshooting.
+
+**Install:** download `LightshowStudio-Setup-0.16.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Open the guide
+- Press **F1**, click **? → User guide**, or search "guide" with **Ctrl+K**.
+- The contents are on the left; the open page lists its sections.
+- **Search** finds every section that mentions your words. Enter opens the
+  first result.
+- Links between pages stay in the guide; **Back** (Alt+←) returns. Web links
+  open in your browser.
+- The guide reopens on the page you read last.
+- The same pages are on GitHub, in the
+  [`guide`](https://github.com/Royalkiller2222/Lightshow-Studio/tree/main/guide) folder.
+
+### Under the hood
+- The app window never navigates away from the app: web links go to the
+  system browser.
+
 ## v0.15.0 — 2026-11-16
 
 Content-aware Auto, part 2: **the song map.** Before you generate, you can

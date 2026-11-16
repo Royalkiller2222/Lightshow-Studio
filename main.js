@@ -4,7 +4,7 @@
 
 'use strict';
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const { ArtNetSender, ArtNetReceiver, SacnSender } = require('./dmx-io.js');
 
@@ -40,6 +40,18 @@ function createWindow() {
     },
   });
   win.removeMenu();
+  // Web links (the user guide's, say) open in the system browser, never in an
+  // app window; the app window itself never navigates away from the app.
+  const isWeb = (url) => /^https?:\/\//i.test(url);
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isWeb(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (e, url) => {
+    if (url === win.webContents.getURL()) return;
+    e.preventDefault();
+    if (isWeb(url)) shell.openExternal(url);
+  });
   win.loadFile(path.join(__dirname, 'src', 'index.html'));
 }
 

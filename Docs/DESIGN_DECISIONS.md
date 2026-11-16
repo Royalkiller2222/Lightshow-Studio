@@ -766,6 +766,31 @@ option won each time. **Don't re-litigate these** — refine within them.
   card floats over the empty clip area with `pointer-events: none` (drops
   reach the track underneath); the empty-venue note is worded per workspace.
 
+### The user guide: Markdown in guide/, read in the app and on GitHub (v0.16.0)
+- **Decision:** The guide is plain Markdown in `guide/` (one file per topic,
+  `README.md` as the contents) with screenshots in `guide/img/`. The app shows
+  the same files in a reader dialog (`ui/GuideReader.js`): F1, ? → User guide,
+  Ctrl+K "guide". Contents on the left, the open page's sections under it,
+  search over every section, links kept inside with Back.
+- **Why:** The user chose "in the app + on GitHub". One source means the two
+  can't drift apart, and the guide works offline in the installed app.
+- **Our own renderer (`ui/markdown.js`), no dependency:** the guide only uses
+  a small part of Markdown, and hard constraint 4 keeps dependencies minimal.
+  Headings get GitHub's anchor ids, so `page.md#a-heading` links work in both
+  places. Raw HTML is escaped, never passed through.
+- **The page order comes from README's links,** so adding a page is one line
+  in the contents. Pages are fetched relative to `src/` (`../guide/`), which
+  works from `file://` in Electron and from the dev server.
+- **Web links open in the system browser.** `main.js` denies `window.open`
+  and blocks navigations off the app page, handing http(s) URLs to
+  `shell.openExternal`. Before this, a clicked web link could have replaced
+  the app in its own window. Save (an `<a download>` blob) is a download, not a
+  navigation, and is unaffected (checked over CDP before and after).
+- **Writing style:** short sentences, the UI's own words in **bold**, Pro-only
+  controls marked "(Pro)". Every claim was checked against the code. When the
+  UI changes, update the matching page (and its screenshot if it shows the
+  change).
+
 ---
 
 ## Shipping

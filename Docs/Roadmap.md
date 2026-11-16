@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Content-aware Auto is complete too (5a ✔ v0.14.0, 5b ✔ v0.15.0); next up: user documentation.
+**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Content-aware Auto is complete too (5a ✔ v0.14.0, 5b ✔ v0.15.0), and so is the user guide (✔ v0.16.0).
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -100,7 +100,11 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
     dialog (chip or chart) to change its type or mood; names, drop hits and
     markers follow; a section mood beats the overall Mood. Saved with the
     show (`songMap`, tied to the song), undoable.
-- **✗ NEXT — Final phase: user documentation.**
+- **Final phase — user documentation — ✔ v0.16.0.** A 13-page guide in
+  `guide/*.md` with screenshots, readable on GitHub and inside the app
+  (F1 / ? / Ctrl+K: contents, search, links, Back). Keep it in step with UI
+  changes.
+- **NEXT:** tune Auto on real songs from the user.
 
 ### Stage 2 follow-ups (small, pick any)
 - **Waveform mode per parameter** — BEYOND's "effect based on waveform": a

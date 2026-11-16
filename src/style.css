@@ -1171,3 +1171,67 @@ details.pat-group > .pat-grid { margin: 2px 0 6px; }
 }
 .pat-import:hover { color: var(--text-1); border-color: var(--accent); background: var(--bg-2); }
 .lmeta-text { width: 140px; text-transform: uppercase; }
+
+/* ---- user guide reader (ui/GuideReader.js) ---- */
+.gr {
+  position: fixed; z-index: 1001; inset: 5vh 0 auto; margin: 0 auto;
+  width: min(1040px, calc(100vw - 32px)); height: 90vh;
+  display: flex; flex-direction: column;
+  border-radius: var(--r-lg); border: 1px solid var(--line-2);
+  background: var(--bg-1); box-shadow: var(--shadow); overflow: hidden;
+}
+.gr[hidden] { display: none; }
+.gr-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.gr-head > .ico { color: var(--accent-hi); }
+.gr-title { font-size: 14px; font-weight: 600; margin-right: 6px; }
+.gr-head .grow { flex: 1; }
+.gr-main { flex: 1; min-height: 0; display: flex; }
+.gr-side { width: 260px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--bg-0); }
+.gr-search { display: flex; align-items: center; gap: 6px; margin: 10px; padding: 0 8px; height: var(--h); border: 1px solid var(--line-2); border-radius: var(--r); background: var(--bg-2); color: var(--text-3); }
+.gr-search:focus-within { border-color: var(--accent-line); }
+.gr-search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text-1); font: inherit; font-size: 12.5px; outline: none; }
+.gr-list { flex: 1; overflow: auto; padding: 0 6px 12px; }
+.gr-list a { display: block; color: var(--text-2); text-decoration: none; border-radius: var(--r-sm); }
+.gr-list a:hover { background: var(--bg-3); color: var(--text-1); }
+.gr-item { padding: 6px 10px; font-size: 13px; }
+.gr-item.on { background: var(--accent-soft); color: var(--text-1); font-weight: 600; }
+.gr-subs { margin: 2px 0 6px 10px; padding-left: 8px; border-left: 1px solid var(--line-2); }
+.gr-sub { padding: 4px 8px; font-size: 12px; }
+.gr-count { padding: 4px 10px 8px; }
+.gr-res { padding: 7px 10px; margin-bottom: 2px; }
+.gr-res.on { box-shadow: inset 2px 0 0 var(--accent); }
+.gr-res-t { display: block; font-size: 12px; font-weight: 600; color: var(--text-1); }
+.gr-res-s { display: block; font-size: 11.5px; line-height: 1.4; margin-top: 2px; }
+.gr-res mark { background: var(--accent-soft); color: var(--accent-hi); border-radius: 2px; }
+
+/* the page itself */
+.gr-doc { flex: 1; min-width: 0; overflow: auto; padding: 22px 34px 60px; font-size: 13.5px; line-height: 1.6; color: var(--text-2); outline: none; }
+.gr-doc > :first-child { margin-top: 0; }
+.gr-doc h1, .gr-doc h2, .gr-doc h3, .gr-doc h4 { color: var(--text-1); line-height: 1.3; scroll-margin-top: 12px; border-radius: var(--r-sm); }
+.gr-doc h1 { font-size: 24px; margin: 0 0 14px; }
+.gr-doc h2 { font-size: 18px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.gr-doc h3 { font-size: 15px; margin: 22px 0 8px; }
+.gr-doc h4 { font-size: 13.5px; margin: 18px 0 6px; }
+.gr-doc p { margin: 0 0 10px; max-width: 74ch; }
+.gr-doc strong { color: var(--text-1); font-weight: 600; }
+.gr-doc a { color: var(--accent-hi); text-decoration: none; }
+.gr-doc a:hover { text-decoration: underline; }
+.gr-doc code { font-family: var(--mono); font-size: 12px; padding: 1px 5px; border-radius: 4px; background: var(--bg-3); color: var(--text-1); }
+.gr-doc pre { padding: 10px 12px; border-radius: var(--r); background: var(--bg-0); overflow: auto; }
+.gr-doc pre code { padding: 0; background: none; }
+.gr-doc ul, .gr-doc ol { margin: 0 0 10px; padding-left: 22px; max-width: 74ch; }
+.gr-doc li { margin: 3px 0; }
+.gr-doc li > ul, .gr-doc li > ol { margin: 3px 0 0; }
+.gr-doc blockquote { margin: 0 0 12px; padding: 8px 12px; border-left: 3px solid var(--warn); border-radius: 0 var(--r) var(--r) 0; background: var(--warn-soft); }
+.gr-doc blockquote p { margin: 0; }
+.gr-doc hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+.gr-doc img { display: block; max-width: 100%; margin: 6px 0 16px; border-radius: var(--r); border: 1px solid var(--line-2); }
+.gr-doc .md-table { overflow-x: auto; margin: 0 0 14px; }
+.gr-doc table { border-collapse: collapse; font-size: 12.5px; line-height: 1.45; }
+.gr-doc th, .gr-doc td { padding: 6px 10px; border: 1px solid var(--line-2); text-align: left; vertical-align: top; }
+.gr-doc th { background: var(--bg-2); color: var(--text-1); font-weight: 600; }
+.gr-flash { animation: gr-flash 1.6s ease-out; }
+@keyframes gr-flash { from { background: var(--accent-soft); } to { background: transparent; } }
+@media (max-width: 720px) { .gr-side { width: 190px; } .gr-doc { padding: 16px 18px 40px; } }
+.help-guide { display: flex; width: 100%; justify-content: center; margin-top: 12px; }
+.help-guide kbd { margin-left: 6px; }

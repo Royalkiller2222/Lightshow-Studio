@@ -58,6 +58,7 @@ import { analyzeSong, applySongMap, songMapFits, editAt } from './auto/analyze.j
 import { LiveDirector, generateShow, normalizeAutoSettings } from './auto/director.js';
 import { Welcome } from './ui/Welcome.js';
 import { Tour } from './ui/Tour.js';
+import { GuideReader } from './ui/GuideReader.js';
 import { toast } from './ui/overlays.js';
 import { isTypingTarget, prefs } from './ui/dom.js';
 
@@ -292,11 +293,13 @@ const topBar = new TopBar(document.getElementById('topbar'), {
     stop: () => transport.stop(),
     welcome: () => openWelcome(),
     tour: () => tour.start(),
+    guide: () => guide.open(),
   },
   output: { get: () => output, set: setOutput },
 });
 
 const palette = new CommandPalette(commands);
+const guide = new GuideReader(); // the user guide (guide/*.md): Help, F1, Ctrl+K
 
 const live = new LivePanel({
   sections: document.getElementById('live-sections'),
@@ -816,6 +819,7 @@ function commands() {
   add('Show', 'Pregenerate an Auto show…', () => autoDialog.open());
   add('Live', 'Fullscreen', () => live.toggleFullscreen(), 'F');
   add('Live', 'Reset masters', () => { Object.assign(engine.masters, { dimmer: 1, speed: 1, size: 1 }); live.syncMasters(); });
+  add('Help', 'Open the user guide', () => guide.open(), 'F1');
   add('Help', 'Keyboard shortcuts', () => topBar.openHelp(), '?');
   add('Help', 'Take the tour', () => tour.start());
   add('Help', 'Show the welcome screen', () => openWelcome());
@@ -826,7 +830,8 @@ function commands() {
 
 // ---------- Keyboard shortcuts ----------
 window.addEventListener('keydown', (e) => {
-  if (palette.isOpen || welcome.isOpen || tour.isOpen || autoDialog.isOpen) return; // they handle their own keys
+  if (e.key === 'F1') { e.preventDefault(); if (!guide.isOpen) guide.open(); return; }
+  if (palette.isOpen || welcome.isOpen || tour.isOpen || autoDialog.isOpen || guide.isOpen) return; // they handle their own keys
   const typing = isTypingTarget(e.target);
   const ctrl = e.ctrlKey || e.metaKey;
   const k = e.key.toLowerCase();

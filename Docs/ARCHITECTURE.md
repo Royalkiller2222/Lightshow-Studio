@@ -46,7 +46,9 @@ model.
 - **Main process** (`main.js`): opens the `BrowserWindow`, owns hardware DMX I/O
   on a steady 40 Hz `setInterval`. Mirrors universe buffers pushed from the
   renderer and sends Art-Net/sACN; also runs the Art-Net receiver for External
-  mode and forwards incoming DMX to the renderer.
+  mode and forwards incoming DMX to the renderer. It also keeps the window on
+  the app: `window.open` and link navigations are denied, and http(s) URLs go
+  to the system browser (`shell.openExternal`).
 - **Preload** (`preload.js`): `contextBridge` exposes `window.dmxBridge`
   (`pushUniverses`, `setConfig`, `onArtNetIn`). The only renderer↔main channel.
 - **Renderer** (`src/app.js` + modules): the 3D scene, show engine, timeline,
@@ -124,6 +126,14 @@ src/
                          drag to the timeline / double-click to add.
     PatchSheet.js        Build bottom panel: fixture list + DMX columns (Pro).
     CommandPalette.js    Ctrl+K search over every command.
+    GuideReader.js       The user guide dialog (F1, ? → User guide, Ctrl+K):
+                         fetches guide/*.md (page order = the links in
+                         guide/README.md), contents + section search, keeps
+                         .md links inside with a Back stack; web links go to
+                         window.open → main.js → system browser.
+    markdown.js          Small Markdown → HTML renderer for the guide (headings
+                         with GitHub-style ids, lists, tables, quotes, code,
+                         images); escapes raw HTML. Pure, Node-testable.
     LivePanel.js         Live workspace: section pads (left), masters (right),
                          now/next strip + song overview (bottom); quantised
                          jumps; writes engine.masters. Hosts the AutoPanel
@@ -279,6 +289,12 @@ src/
   patch/
     Patch.js             Patch registry (entries, rename, repatch, collisions,
                          nextFreeAddress, clear).
+
+guide/
+  README.md, 01-…12-*.md The user guide (shown on GitHub and by ui/GuideReader.js).
+                         README's links set the page order; img/ holds the
+                         screenshots. Shipped in the installer (package.json
+                         build.files).
 
 scripts/
   make-icons.js          npm run icons: renders logo.js → build/icon.ico (16–256),

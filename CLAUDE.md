@@ -93,7 +93,8 @@ Show engine (timeline cues)            External console
 - **UI (`src/ui/`)** — the window is *top bar / [library | 3D view | inspector] /
   bottom area*. `Shell` (Build / Program / Live workspaces, resizable panels,
   Simple/Pro), `TopBar`, `ViewportOverlay`, `Inspector`, `FixtureLibrary`,
-  `ContentLibrary`, `PatchSheet`, `CommandPalette` (Ctrl+K), `LivePanel`,
+  `ContentLibrary`, `PatchSheet`, `CommandPalette` (Ctrl+K), `GuideReader`
+  (F1: the user guide from `guide/*.md`, rendered by `markdown.js`), `LivePanel`,
   `Welcome` (first-run screen) and `Tour` (5-step spotlight tour), plus `icons.js`,
   `logo.js`, `dom.js`, `overlays.js`. The approved design is in
   DESIGN_DECISIONS "The interface".
@@ -116,7 +117,8 @@ Two tracks, both user-approved:
    **3c Auto — live + pregenerated ✔ (v0.10.0)**. Imports: **4a MVR rig ✔ (v0.11.0)**,
    **4b QLC+ `.qxw` ✔ (v0.12.0)**, **4c xLights `.xsq` ✔ (v0.13.0)**. Then **content-aware Auto**:
    **5a smarter listening + director ✔ (v0.14.0)**, **5b song map in the
-   Pregenerate dialog ✔ (v0.15.0)**; next the final user-documentation phase. Shows are
+   Pregenerate dialog ✔ (v0.15.0)**, then the **user guide ✔ (v0.16.0)**; next: tune
+   Auto on the user's songs. Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**
 
@@ -174,6 +176,8 @@ npm run icons    # regenerate app/installer icons from src/ui/logo.js
   Colours come from the CSS tokens in `style.css` — never hard-code UI colours in
   JS except show content (beams, curves). Every committed edit calls
   `history.record()` (via the `onCommit`/`onEdit` callbacks).
+- **Keep the user guide (`guide/*.md`) in step with the UI.** A changed control,
+  label or workflow means updating its page; the app shows the same files (F1).
 - **Never use `closest('[data-ws]')`-style lookups for attributes that `<body>`
   also carries** — `body[data-ws]` matched every click once and silently broke
   the whole top bar. Tabs use `data-tab`.

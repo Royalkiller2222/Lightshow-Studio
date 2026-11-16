@@ -11,6 +11,9 @@ real rig over Art-Net / sACN — or let a lighting console drive the 3D view.
 > (the *why* behind the choices) and [`Docs/Roadmap.md`](Docs/Roadmap.md)
 > (what's done and where it's going).
 
+> **Using the app?** Read the [user guide](guide/README.md). It's also inside
+> the app: press **F1**.
+
 ## Install
 
 1. Download **`LightshowStudio-Setup-x.y.z.exe`** from the
