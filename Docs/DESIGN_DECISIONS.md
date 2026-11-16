@@ -397,6 +397,33 @@ curves live under the track"; these rules carried over unchanged.)
   so music isn't treated as noise. With no sound, Auto keeps going on the
   beat instead of freezing.
 
+### Importing an MVR rig (Stage 4a, v0.11.0)
+- **Rig only, mapped to our types.** We don't simulate GDTF fixtures channel
+  by channel; each MVR fixture becomes one of our fixture types, so it works
+  with looks, effects, Live and Auto at once. The 3D view matches the plot,
+  but the DMX layout is ours — the dialog says so.
+- **The guess is explainable and overridable.** Rules in order: laser/Kvant
+  in the name → laser; spark/flame → cold spark; GDTF has Pan and Tilt →
+  moving head; batten/cyc → batten; pixel/tube/strip/bar → pixel bar; no GDTF
+  but a mover-ish name → moving head; else LED PAR. The dialog shows the
+  reason ("pan + tilt") per kind of fixture, and the user can change it.
+- **Addresses: keep or re-patch.** Plots pack real fixtures by their real
+  footprints, and ours differ (a 3-channel PAR is 5 channels here), so
+  keeping the plot's addresses can overlap. The dialog counts the overlaps
+  and defaults to Re-patch when there are any; Re-patch starts each fixture
+  in its own universe and moves on when it's full.
+- **Orientation:** MVR is Z-up in millimetres with +Y upstage; the scene is
+  Y-up in metres with the stage back at -Z, so position = (x, z, -y)/1000
+  and rotation R' = C·R·Cᵀ. GDTF fixtures rest hanging, beam down — the same
+  as our truss fixtures at rotation 0 — so those copy R' directly. Our laser
+  rests aiming forward, so it gets R'·Rx(90°); if that still points at the
+  floor (plots often leave the symbol un-rotated), it keeps our default aim.
+  Spark machines and podiums stand on the floor.
+- **No dependencies:** MVR and GDTF are zips of XML. A ~70-line zip reader
+  (DecompressionStream does the inflating) and a ~100-line XML parser run in
+  both Electron and Node, so the importer is tested headless. DOMParser was
+  avoided because Node doesn't have it.
+
 ---
 
 ## Project persistence & undo

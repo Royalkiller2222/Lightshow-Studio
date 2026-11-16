@@ -110,7 +110,11 @@ src/
     Inspector.js         Right panel: fixture / venue / show views; hosts the
                          CueInspector for cues.
     FixtureLibrary.js    Build library: fixture cards (drag / + / double-click),
-                         "Place mirrored pairs".
+                         "Place mirrored pairs", "Import a rig (MVR)…".
+    ImportRigDialog.js   MVR import: one row per kind of fixture (count, guessed
+                         type + why, type select) and the options (replace/add,
+                         fit room, centre, keep addresses/re-patch) with an
+                         overlap warning; app.js applyRigImport() applies it.
     ContentLibrary.js    Program library: pattern thumbnails + effects, search,
                          drag to the timeline / double-click to add.
     PatchSheet.js        Build bottom panel: fixture list + DMX columns (Pro).
@@ -172,6 +176,19 @@ src/
                          line-in on its own analyser (never played back).
     bpm.js               analyzeTempo(): onset envelope + autocorrelation +
                          parabolic interp + downbeat offset.
+
+  import/                File imports. Pure; no DOM, no Three.js; Node-testable.
+    zip.js               readZip(): read-only zip (central directory by hand,
+                         deflate via DecompressionStream). No dependency.
+    xml.js               parseXml(): small non-validating XML -> plain tree
+                         {tag, attrs, children, text} + child/children/
+                         descendants/childText helpers (namespace-agnostic).
+    mvr.js               readMvr() (scene + per-spec GDTF info), guessType(),
+                         placeFixture() (MVR Z-up mm -> scene Y-up m, rotation
+                         via C·R·Cᵀ -> Euler XYZ, laser/floor corrections),
+                         planRig() (centre, floor, fit room) and
+                         assignAddresses() (keep / re-patch for our channel
+                         counts, around the existing rig).
 
   auto/                  Stage 3c Auto. Pure; no DOM, no Three.js; Node-testable.
     analyze.js           analyzeSong(buffer, {bpm, offset}): per-frame bass/high/

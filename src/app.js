@@ -50,6 +50,8 @@ import { CommandPalette } from './ui/CommandPalette.js';
 import { LivePanel } from './ui/LivePanel.js';
 import { AutoPanel } from './ui/AutoPanel.js';
 import { AutoShowDialog } from './ui/AutoShowDialog.js';
+import { ImportRigDialog } from './ui/ImportRigDialog.js';
+import { readMvr } from './import/mvr.js';
 import { analyzeSong } from './auto/analyze.js';
 import { LiveDirector, generateShow, normalizeAutoSettings } from './auto/director.js';
 import { Welcome } from './ui/Welcome.js';
@@ -239,6 +241,7 @@ const fixtureLibrary = new FixtureLibrary(document.getElementById('lib-build'), 
   onAdd: addFixture,
   onDragStart: (key) => placement.setPendingType(key),
   onDragEnd: () => placement.setPendingType(null),
+  onImportRig: () => importRigFile(),
 });
 
 new ContentLibrary(document.getElementById('lib-program'), {
@@ -649,6 +652,54 @@ function removeImportedPattern(key) {
   toast(`Removed "${pat.label}" from this show. Ctrl+Z brings it back.`, { kind: 'ok' });
 }
 
+// ---------- Rig import (MVR from grandMA3, Vectorworks, Capture…) ----------
+// The file is read (import/mvr.js), the dialog shows what it found and the
+// options, then the rig is rebuilt as one undoable edit.
+const MAX_RIG_BYTES = 300 * 1048576; // MVRs carry 3D models inside their GDTFs
+const rigFile = document.createElement('input');
+rigFile.type = 'file';
+rigFile.accept = '.mvr';
+rigFile.hidden = true;
+document.body.appendChild(rigFile);
+function importRigFile() { rigFile.click(); }
+const importRigDialog = new ImportRigDialog({
+  types: FIXTURE_TYPES,
+  chOf: (key) => fixtureType(key)?.profile?.channelCount ?? 0,
+  rigCount: () => rig.fixtures.length,
+  rigSpans: () => rig.patch.entries.map((e) => ({ universe: e.universe, startAddress: e.startAddress, channelCount: e.channelCount })),
+  room: () => ({ ...room.size }),
+  onImport: applyRigImport,
+});
+rigFile.addEventListener('change', async () => {
+  const file = rigFile.files[0];
+  rigFile.value = '';
+  if (!file) return;
+  try {
+    if (file.size > MAX_RIG_BYTES) throw new Error(`it's over ${MAX_RIG_BYTES / 1048576} MB`);
+    const mvr = await readMvr(await file.arrayBuffer());
+    importRigDialog.open(mvr, file.name);
+  } catch (e) {
+    console.warn('MVR import failed:', e);
+    toast(`Couldn't read "${file.name}": ${e.message}`, { kind: 'error', ms: 6000 });
+  }
+});
+function applyRigImport({ entries, room: size, replace, fit }) {
+  editTools.deselect();
+  if (replace) rig.clear();
+  if (fit) {
+    room.build(size.width, size.depth, size.height);
+    houseLight.setRoom(size.width, size.depth, size.height);
+    placement.setTrussY(size.height - 0.6);
+  }
+  let made = 0;
+  for (const e of entries) if (rig.restore(e)) made++;
+  timeline.render(); // laser track headers name their projectors
+  shell.setWorkspace('build');
+  history.record();
+  const clashes = rig.patch.collisions().filter(Boolean).length;
+  toast(`Imported ${made} fixture${made === 1 ? '' : 's'}.${clashes ? ` ${clashes} overlap in the patch — see the Patch sheet.` : ''} Ctrl+Z undoes it.`, { kind: clashes ? 'info' : 'ok', ms: 5500 });
+}
+
 // ---------- Commands (Ctrl+K) ----------
 function commands() {
   const list = [];
@@ -665,6 +716,7 @@ function commands() {
   for (const w of WORKSPACES) add('Go to', `${w.label} workspace`, () => shell.setWorkspace(w.id), w.keys);
   for (const t of FIXTURE_TYPES) add('Add fixture', t.label, () => { shell.setWorkspace('build'); addFixture(t.key); });
   add('File', 'Import an ILDA laser file…', importIldaFile);
+  add('File', 'Import a rig (MVR)…', importRigFile);
   for (const p of allPatterns()) add('Add laser cue', p.label, () => { shell.setWorkspace('program'); timeline.addLaserCueAt(p.key); });
   for (const l of LOOKS) add('Add look', l.name, () => { shell.setWorkspace('program'); timeline.addLookAt(l.key); });
   for (const e of EFFECTS) add('Add effect', effectShortName(e) + (e.attr === 'color' ? ' (colour)' : e.attr === 'position' ? ' (movement)' : ''), () => { shell.setWorkspace('program'); timeline.addFixtureCueAt(e.key); });

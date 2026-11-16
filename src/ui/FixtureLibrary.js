@@ -1,6 +1,7 @@
 // Build workspace library: every fixture type as a card. Drag a card into the
 // venue to place it (as a mirrored pair across the centre line when "Place
-// mirrored pairs" is on), or click + to drop one in at a default spot.
+// mirrored pairs" is on), or click + to drop one in at a default spot. The
+// "Import a rig" button brings in a whole plot (.mvr).
 
 import { fixtureIcon, icon } from './icons.js';
 import { esc, prefs } from './dom.js';
@@ -8,9 +9,9 @@ import { esc, prefs } from './dom.js';
 export class FixtureLibrary {
   /**
    * deps: types (registry FIXTURE_TYPES), shell,
-   *       onAdd(key), onDragStart(key), onDragEnd()
+   *       onAdd(key), onDragStart(key), onDragEnd(), onImportRig()
    */
-  constructor(root, { types, shell, onAdd, onDragStart, onDragEnd }) {
+  constructor(root, { types, shell, onAdd, onDragStart, onDragEnd, onImportRig }) {
     this.root = root;
     this.mirror = prefs.get('place.mirror', true);
 
@@ -36,6 +37,7 @@ export class FixtureLibrary {
           <input type="checkbox" class="switch" data-role="mirror" ${this.mirror ? 'checked' : ''} />
         </label>
         <ul class="fx-list">${cards}</ul>
+        <button type="button" class="pat-import" data-act="import-rig" style="margin-top:10px" title="Import a rig plot (.mvr) from grandMA3, Vectorworks, Capture and others">${icon('open', 'sm')}<span>Import a rig (MVR)…</span></button>
         <div class="tip" style="margin-top:12px">${icon('help', 'sm')}<div>Drag a fixture into the room. Placement snaps to the floor grid; ceiling fixtures hang from the truss.</div></div>
       </div>`;
 
@@ -47,6 +49,7 @@ export class FixtureLibrary {
     root.addEventListener('click', (e) => {
       const add = e.target.closest('[data-add]');
       if (add) onAdd(add.dataset.add);
+      else if (e.target.closest('[data-act="import-rig"]')) onImportRig?.();
     });
     root.addEventListener('dblclick', (e) => {
       const card = e.target.closest('.fx-card');

@@ -934,6 +934,20 @@ details.more > .more-body { padding: 2px 0 4px; }
 .ad-p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 .ad-foot { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
 .ad-foot .grow { flex: 1; }
+
+/* "Import a rig" (MVR) dialog: one row per kind of fixture */
+.ird-tab { width: 100%; border-collapse: collapse; margin: 4px 0 6px; font-size: 12.5px; }
+.ird-tab td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.ird-ic { width: 22px; color: var(--text-2); }
+.ird-ic .ico { display: block; }
+.ird-nm { color: var(--text-1); overflow-wrap: anywhere; }
+.ird-why { display: block; font-size: 11px; color: var(--text-3); }
+.ird-n { width: 44px; text-align: right; font: 12px var(--mono); color: var(--text-2); }
+.ird-ty { width: 160px; }
+.ird-ty select { width: 100%; }
+.tip.warn { background: var(--warn-soft); }
+.tip.warn .ico { color: var(--warn); }
+.ad-body .tip + .tip { margin-top: 8px; }
 .lv-fader { display: block; margin: 0 0 16px; }
 .lv-fname { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-2); margin-bottom: 4px; }
 .lv-fval { font: 12px var(--mono); color: var(--text-1); }

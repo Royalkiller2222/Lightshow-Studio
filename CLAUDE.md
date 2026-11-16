@@ -84,6 +84,9 @@ Show engine (timeline cues)            External console
 - **`src/auto/`** — Auto (Stage 3c): `analyze.js` (whole-song bars, beats,
   sections) and `director.js` (settings, `generateShow` for Pregenerate,
   `LiveDirector` for live Auto). Pure, Node-testable.
+- **`src/import/`** — file imports: `zip.js` + `xml.js` (our own readers, no
+  dependency) and `mvr.js` (MVR rig → our fixture types, positions, patch).
+  Pure, Node-testable. The dialog is `ui/ImportRigDialog.js`.
 - **UI (`src/ui/`)** — the window is *top bar / [library | 3D view | inspector] /
   bottom area*. `Shell` (Build / Program / Live workspaces, resizable panels,
   Simple/Pro), `TopBar`, `ViewportOverlay`, `Inspector`, `FixtureLibrary`,
@@ -107,7 +110,8 @@ Two tracks, both user-approved:
    user runs **primarily laser shows**. Laser Stage 1 (patterns + values) and
    Stage 2 (keyframe envelopes) are done; Stage 3 is split: **3a projectors +
    palettes ✔ (v0.8.0)**, **3b more patterns + ILDA import ✔ (v0.9.0)**,
-   **3c Auto — live + pregenerated ✔ (v0.10.0)**. Next: imports (QLC+, xLights, MVR), then a
+   **3c Auto — live + pregenerated ✔ (v0.10.0)**. Imports: **4a MVR rig ✔ (v0.11.0)**,
+   next 4b QLC+ `.qxw`, then 4c xLights `.xsq`; then a
    final user-documentation phase. Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**

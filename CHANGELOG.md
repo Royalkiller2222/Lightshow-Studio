@@ -3,6 +3,38 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.11.0 — 2026-11-16
+
+Imports, part 1: **bring in a rig from an MVR file**. MVR (My Virtual Rig) is
+the open plot-exchange format written by grandMA3, Vectorworks Spotlight,
+Capture, Depence and others.
+
+**Install:** download `LightshowStudio-Setup-0.11.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Import a rig (MVR)
+- **Import a rig (MVR)…** at the bottom of the Build library (or Ctrl+K). It
+  reads each fixture's position, aim, name and DMX patch (universe and
+  address), including fixtures inside groups.
+- Each kind of fixture becomes one of our fixture types. The type is guessed
+  from the fixture file inside the MVR (pan + tilt makes a moving head) or
+  from the name (laser, spark, batten, bar…). The dialog shows one row per
+  kind with its count and the reason for the guess, and you can change any of
+  them.
+- **Options:**
+  - **Replace** the rig or **add to it**.
+  - **Fit the room** around the rig.
+  - **Centre** the rig.
+  - **Keep the plot's addresses** or **re-patch**. Our fixture models have
+    their own channel counts, so the plot's addresses can overlap; the dialog
+    warns you and picks Re-patch when they would. Fixtures with no address
+    get the next free one.
+- Lasers that the plot points straight at the floor (an un-rotated symbol)
+  face the audience instead, and spark machines stand on the floor. Trusses
+  and other scene objects are counted but not imported.
+- The import is one edit: Ctrl+Z undoes it.
+
 ## v0.10.0 — 2026-11-15
 
 Laser Stage 3c: **Auto**. The music can drive the lasers in two ways: live in

@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Laser Stage 3 is complete too; next up: imports.
+**The remake is complete.** Laser Stage 3 is complete too; imports are under way (4a MVR ✔; 4b QLC+ next).
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -66,7 +66,17 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
     palette. **Pregenerate:** analyses the whole song (sections, per-beat kick)
     and writes editable cues onto Auto tracks + section markers (builds ramp,
     blackout before drops, beat pulses); regenerating replaces them.
-- **✗ NEXT: imports** — QLC+ `.qxw`, xLights `.xsq`, MVR (rig only).
+- **Imports (stage 4):**
+  - **4a — MVR rig import — ✔ v0.11.0.** `.mvr` (grandMA3, Vectorworks,
+    Capture…): fixture positions, aim, names and patch → our fixture types,
+    guessed from the embedded GDTF (pan + tilt = moving head) or the name and
+    changeable in a dialog; replace / add, fit the room, centre, keep the
+    plot's addresses or re-patch. Undoable. Our own zip + XML readers in
+    `src/import/` (shared with 4b/4c).
+  - **4b — ✗ NEXT (v0.12.0).** QLC+ `.qxw`: fixtures + patch, and timed shows
+    turned into cues.
+  - **4c — (v0.13.0).** xLights `.xsq`: timing marks → markers, effects →
+    approximate cues.
 - **Final phase: user documentation.**
 
 ### Stage 2 follow-ups (small, pick any)
