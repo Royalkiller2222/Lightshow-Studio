@@ -424,6 +424,30 @@ curves live under the track"; these rules carried over unchanged.)
   both Electron and Node, so the importer is tested headless. DOMParser was
   avoided because Node doesn't have it.
 
+### Importing a QLC+ workspace (Stage 4b, v0.12.0)
+- **One dialog, many sources.** Each importer hands `ImportRigDialog` a
+  source adapter (kinds of fixture, `plan(opts)`, shows, `buildShow()`);
+  the shared pieces (type guess, placement finish, addressing) live in
+  `import/rig.js`. xLights (4c) plugs in the same way.
+- **Shows become looks, not channel data.** A `.qxw` has no fixture
+  definitions, so we can't know what channel 7 of a "Martin MAC" means. We
+  read values only where the layout is certain (generic RGB / RGBW / dimmer)
+  and otherwise take colour from the function's name. Each QLC+ function
+  becomes a look in our effects with the **exact** start, length and speed
+  (`sync: false`, rate in Hz from QLC+'s milliseconds), because timing is
+  what a programmer cares about most and what we can carry over faithfully.
+- **Tracks per group.** Our cues target a fixture group, so a QLC+ track that
+  drives PARs and movers splits into "Wash · PARs" and "Wash · Movers".
+- **Lasers get laser cues.** A DMX laser in QLC+ becomes a laser track (beams
+  in the cue's colour, a tunnel when it moved), since our projectors are
+  driven by laser cues, not fixture looks.
+- **Positions:** the 2D Monitor is read as a top view (mm from the grid's
+  upstage-left), at our truss height; without it, fixtures hang in rows by
+  type, each row centred.
+- **Replace the timeline** clears tracks, cues and markers; the show's BPM
+  is taken only when no song is loaded (a loaded song's detected tempo wins).
+  The whole import is one `history.record()`.
+
 ---
 
 ## Project persistence & undo

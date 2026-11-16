@@ -110,11 +110,14 @@ src/
     Inspector.js         Right panel: fixture / venue / show views; hosts the
                          CueInspector for cues.
     FixtureLibrary.js    Build library: fixture cards (drag / + / double-click),
-                         "Place mirrored pairs", "Import a rig (MVR)…".
-    ImportRigDialog.js   MVR import: one row per kind of fixture (count, guessed
-                         type + why, type select) and the options (replace/add,
-                         fit room, centre, keep addresses/re-patch) with an
-                         overlap warning; app.js applyRigImport() applies it.
+                         "Place mirrored pairs", "Import a rig (MVR, QLC+)…".
+    ImportRigDialog.js   MVR / QLC+ import, on a *source* adapter (mvrSource /
+                         qlcSource: kinds, plan(), shows, buildShow()): one row
+                         per kind of fixture (count, guessed type + why, type
+                         select), the options (replace/add, fit room, centre,
+                         keep addresses/re-patch) with an overlap warning, and
+                         (QLC+) a Show picker + replace/add the timeline.
+                         app.js applyRigImport() / addImportedShow() apply it.
     ContentLibrary.js    Program library: pattern thumbnails + effects, search,
                          drag to the timeline / double-click to add.
     PatchSheet.js        Build bottom panel: fixture list + DMX columns (Pro).
@@ -183,12 +186,20 @@ src/
     xml.js               parseXml(): small non-validating XML -> plain tree
                          {tag, attrs, children, text} + child/children/
                          descendants/childText helpers (namespace-agnostic).
+    rig.js               What every rig importer shares: guessType() from names
+                         (+ GDTF attrs), GROUP_OF_TYPE, finishPlacement()
+                         (centre, floor, fit room), assignAddresses() (keep /
+                         re-patch for our channel counts), kindsOf().
+    qlc.js               readQlc() (.qxw: fixtures, functions, groups, 2D
+                         Monitor, shows), planRig() (Monitor positions or rows
+                         by type), convertShow() (Show tracks -> our tracks per
+                         group; Scene/Chaser/Sequence/EFX/RGBMatrix/Collection
+                         -> layers with exact timing), qlcSource().
     mvr.js               readMvr() (scene + per-spec GDTF info), guessType(),
                          placeFixture() (MVR Z-up mm -> scene Y-up m, rotation
                          via C·R·Cᵀ -> Euler XYZ, laser/floor corrections),
                          planRig() (centre, floor, fit room) and
-                         assignAddresses() (keep / re-patch for our channel
-                         counts, around the existing rig).
+                         mvrSource() for the dialog.
 
   auto/                  Stage 3c Auto. Pure; no DOM, no Three.js; Node-testable.
     analyze.js           analyzeSong(buffer, {bpm, offset}): per-frame bass/high/

@@ -1,7 +1,7 @@
 // Build workspace library: every fixture type as a card. Drag a card into the
 // venue to place it (as a mirrored pair across the centre line when "Place
 // mirrored pairs" is on), or click + to drop one in at a default spot. The
-// "Import a rig" button brings in a whole plot (.mvr).
+// "Import a rig" button brings in a whole plot (.mvr) or QLC+ workspace (.qxw).
 
 import { fixtureIcon, icon } from './icons.js';
 import { esc, prefs } from './dom.js';
@@ -37,7 +37,7 @@ export class FixtureLibrary {
           <input type="checkbox" class="switch" data-role="mirror" ${this.mirror ? 'checked' : ''} />
         </label>
         <ul class="fx-list">${cards}</ul>
-        <button type="button" class="pat-import" data-act="import-rig" style="margin-top:10px" title="Import a rig plot (.mvr) from grandMA3, Vectorworks, Capture and others">${icon('open', 'sm')}<span>Import a rig (MVR)…</span></button>
+        <button type="button" class="pat-import" data-act="import-rig" style="margin-top:10px" title="Import a rig plot (.mvr) from grandMA3, Vectorworks, Capture and others, or a QLC+ workspace (.qxw) with its shows">${icon('open', 'sm')}<span>Import a rig (MVR, QLC+)…</span></button>
         <div class="tip" style="margin-top:12px">${icon('help', 'sm')}<div>Drag a fixture into the room. Placement snaps to the floor grid; ceiling fixtures hang from the truss.</div></div>
       </div>`;
 

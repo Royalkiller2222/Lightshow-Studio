@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Laser Stage 3 is complete too; imports are under way (4a MVR ✔; 4b QLC+ next).
+**The remake is complete.** Laser Stage 3 is complete too; imports are under way (4a MVR ✔, 4b QLC+ ✔; 4c xLights next).
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -73,9 +73,13 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
     changeable in a dialog; replace / add, fit the room, centre, keep the
     plot's addresses or re-patch. Undoable. Our own zip + XML readers in
     `src/import/` (shared with 4b/4c).
-  - **4b — ✗ NEXT (v0.12.0).** QLC+ `.qxw`: fixtures + patch, and timed shows
-    turned into cues.
-  - **4c — (v0.13.0).** xLights `.xsq`: timing marks → markers, effects →
+  - **4b — QLC+ workspace import — ✔ v0.12.0.** `.qxw`: fixtures + patch
+    (positions from the 2D Monitor, else rows by type), and one Show turned
+    into timeline tracks/cues with exact timing — scenes → level + colour,
+    chasers/sequences → chases, EFX → movement, RGB Matrix → colour chase,
+    collections merged, lasers → laser cues, audio → "load this song". Same
+    dialog as MVR (`ImportRigDialog` on a source adapter).
+  - **4c — ✗ NEXT (v0.13.0).** xLights `.xsq`: timing marks → markers, effects →
     approximate cues.
 - **Final phase: user documentation.**
 

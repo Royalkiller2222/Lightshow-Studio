@@ -24,7 +24,7 @@ import { HouseLight } from './viz/HouseLight.js';
 import { Atmosphere } from './viz/Atmosphere.js';
 import { ShowEngine, GROUPS } from './show/ShowEngine.js';
 import { EFFECTS } from './show/effects.js';
-import { LOOKS, lookLayers } from './show/looks.js';
+import { LOOKS, lookLayers, makeLayer } from './show/looks.js';
 import { Patch } from './patch/Patch.js';
 import { FIXTURE_TYPES, fixtureType } from './fixtures/registry.js';
 import { PlacementController } from './placement/PlacementController.js';
@@ -51,7 +51,8 @@ import { LivePanel } from './ui/LivePanel.js';
 import { AutoPanel } from './ui/AutoPanel.js';
 import { AutoShowDialog } from './ui/AutoShowDialog.js';
 import { ImportRigDialog } from './ui/ImportRigDialog.js';
-import { readMvr } from './import/mvr.js';
+import { readMvr, mvrSource } from './import/mvr.js';
+import { readQlc, qlcSource } from './import/qlc.js';
 import { analyzeSong } from './auto/analyze.js';
 import { LiveDirector, generateShow, normalizeAutoSettings } from './auto/director.js';
 import { Welcome } from './ui/Welcome.js';
@@ -652,13 +653,14 @@ function removeImportedPattern(key) {
   toast(`Removed "${pat.label}" from this show. Ctrl+Z brings it back.`, { kind: 'ok' });
 }
 
-// ---------- Rig import (MVR from grandMA3, Vectorworks, Capture…) ----------
-// The file is read (import/mvr.js), the dialog shows what it found and the
-// options, then the rig is rebuilt as one undoable edit.
+// ---------- Rig import (MVR from grandMA3, Vectorworks, Capture…; QLC+) ----------
+// The file is read (import/mvr.js, import/qlc.js), the dialog shows what it
+// found and the options, then the rig (and a QLC+ show's cues) are rebuilt as
+// one undoable edit.
 const MAX_RIG_BYTES = 300 * 1048576; // MVRs carry 3D models inside their GDTFs
 const rigFile = document.createElement('input');
 rigFile.type = 'file';
-rigFile.accept = '.mvr';
+rigFile.accept = '.mvr,.qxw';
 rigFile.hidden = true;
 document.body.appendChild(rigFile);
 function importRigFile() { rigFile.click(); }
@@ -676,15 +678,15 @@ rigFile.addEventListener('change', async () => {
   if (!file) return;
   try {
     if (file.size > MAX_RIG_BYTES) throw new Error(`it's over ${MAX_RIG_BYTES / 1048576} MB`);
-    const mvr = await readMvr(await file.arrayBuffer());
-    importRigDialog.open(mvr, file.name);
+    if (/\.qxw$/i.test(file.name)) importRigDialog.open(qlcSource(readQlc(await file.text()), file.name));
+    else importRigDialog.open(mvrSource(await readMvr(await file.arrayBuffer()), file.name));
   } catch (e) {
-    console.warn('MVR import failed:', e);
+    console.warn('Rig import failed:', e);
     toast(`Couldn't read "${file.name}": ${e.message}`, { kind: 'error', ms: 6000 });
   }
 });
-function applyRigImport({ entries, room: size, replace, fit }) {
-  editTools.deselect();
+function applyRigImport({ entries, room: size, replace, fit, show = null, replaceCues = true }) {
+  deselectAll();
   if (replace) rig.clear();
   if (fit) {
     room.build(size.width, size.depth, size.height);
@@ -693,11 +695,40 @@ function applyRigImport({ entries, room: size, replace, fit }) {
   }
   let made = 0;
   for (const e of entries) if (rig.restore(e)) made++;
+  if (show) addImportedShow(show, replaceCues);
   timeline.render(); // laser track headers name their projectors
-  shell.setWorkspace('build');
+  shell.setWorkspace(show && !entries.length ? 'program' : 'build');
   history.record();
   const clashes = rig.patch.collisions().filter(Boolean).length;
-  toast(`Imported ${made} fixture${made === 1 ? '' : 's'}.${clashes ? ` ${clashes} overlap in the patch — see the Patch sheet.` : ''} Ctrl+Z undoes it.`, { kind: clashes ? 'info' : 'ok', ms: 5500 });
+  const parts = [entries.length && `${made} fixture${made === 1 ? '' : 's'}`, show && `"${show.name}" (${show.cues} cue${show.cues === 1 ? '' : 's'})`].filter(Boolean);
+  const song = show?.audio.length ? ` Load the song (${show.audio.join(', ')}) to hear it.` : '';
+  toast(`Imported ${parts.join(' and ')}.${clashes ? ` ${clashes} overlap in the patch — see the Patch sheet.` : ''}${song} Ctrl+Z undoes it.`, { kind: clashes ? 'info' : 'ok', ms: 7000 });
+}
+
+/** A converted QLC+ show (import/qlc.js convertShow) -> timeline tracks and cues. */
+function addImportedShow(show, replaceCues) {
+  if (replaceCues) {
+    for (const t of [...engine.tracks]) engine.removeTrack(t.id);
+    engine.cues.length = 0;
+    engine.markers = [];
+  }
+  for (const t of show.tracks) {
+    if (t.groupId === 'lasers') {
+      // A DMX laser in QLC+ -> a laser track: beams in the cue's colour, a
+      // tunnel when the QLC+ function moved it
+      const track = engine.addTrack({ name: t.name, kind: 'laser', mute: t.mute });
+      for (const c of t.cues) {
+        const moving = c.layers.some(([k]) => k.startsWith('p-'));
+        const cue = engine.addLaserCue({ pattern: moving ? 'tunnel' : 'beam-fan', start: c.start, duration: c.duration, track: track.id });
+        const col = c.layers.find(([k]) => k === 'c-static' || k === 'c-two');
+        if (col) cue.params.color = [...col[1].color];
+      }
+    } else {
+      const track = engine.addTrack({ name: t.name, kind: 'fixture', groupId: t.groupId, mute: t.mute });
+      for (const c of t.cues) engine.addCue({ layers: c.layers.map(([k, p]) => makeLayer(k, p)), name: c.name, start: c.start, duration: c.duration, track: track.id });
+    }
+  }
+  if (show.bpm && !audio.buffer) { transport.bpm = show.bpm; topBar.syncBpm(); } // (recorded with the import)
 }
 
 // ---------- Commands (Ctrl+K) ----------
@@ -717,6 +748,7 @@ function commands() {
   for (const t of FIXTURE_TYPES) add('Add fixture', t.label, () => { shell.setWorkspace('build'); addFixture(t.key); });
   add('File', 'Import an ILDA laser file…', importIldaFile);
   add('File', 'Import a rig (MVR)…', importRigFile);
+  add('File', 'Import a QLC+ workspace…', importRigFile);
   for (const p of allPatterns()) add('Add laser cue', p.label, () => { shell.setWorkspace('program'); timeline.addLaserCueAt(p.key); });
   for (const l of LOOKS) add('Add look', l.name, () => { shell.setWorkspace('program'); timeline.addLookAt(l.key); });
   for (const e of EFFECTS) add('Add effect', effectShortName(e) + (e.attr === 'color' ? ' (colour)' : e.attr === 'position' ? ' (movement)' : ''), () => { shell.setWorkspace('program'); timeline.addFixtureCueAt(e.key); });

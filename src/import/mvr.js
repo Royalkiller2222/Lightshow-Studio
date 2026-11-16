@@ -18,6 +18,7 @@
 
 import { readZip } from './zip.js';
 import { parseXml, child, children, descendants, childText } from './xml.js';
+import { guessType as guessFromText, finishPlacement, assignAddresses, kindsOf } from './rig.js';
 
 const MAX_FIXTURES = 2000;
 
@@ -148,19 +149,11 @@ function parseAddress(el) {
 const clampAddr = (a) => Math.min(512, Math.max(1, a || 1));
 
 // --------------------------------------------------------- fixture types
-/** Guess one of our fixture types. Returns { type, why }. */
+/** Guess one of our fixture types for an MVR fixture. Returns { type, why }. */
 export function guessType(f) {
   const g = f.gdtf;
-  const text = [g?.manufacturer, g?.name, f.spec, f.name].filter(Boolean).join(' ').toLowerCase();
-  const has = (a) => g?.attrs.some((x) => x.toLowerCase() === a);
-  if (/laser|kvant|ilda|beyond/.test(text)) return { type: 'laser', why: 'laser in the name' };
-  if (/spark|sparkular|flame/.test(text)) return { type: 'cold-spark', why: 'spark in the name' };
-  if (has('pan') && has('tilt')) return { type: 'moving-head', why: 'pan + tilt' };
-  if (/batten|cyc\b|cyclorama/.test(text)) return { type: 'batten', why: 'batten in the name' };
-  if (/pixel|tube|strip|sunstrip|\bbar\b|led ?bar/.test(text)) return { type: 'pixel-bar', why: 'bar in the name' };
-  if (!g && /spot|beam|moving|mover|\bhead\b|sharpy|robin|\bmac\b|pointe|hybrid|wash/.test(text)) return { type: 'moving-head', why: 'the name (no fixture file)' };
-  if (/podium|riser|stage ?deck/.test(text)) return { type: 'podium', why: 'podium in the name' };
-  return { type: 'led-par', why: g ? 'no pan/tilt' : 'default' };
+  const text = [g?.manufacturer, g?.name, f.spec, f.name].filter(Boolean).join(' ');
+  return guessFromText(text, { attrs: g ? g.attrs : null });
 }
 
 /** A stable key for "fixtures of the same kind" (the dialog's rows). */
@@ -210,8 +203,8 @@ export function placeFixture(f, type) {
 }
 
 /**
- * Plan the import: our fixture entries (rig.restore shape), the room, and a
- * summary. opts: { typeFor(kindKey) -> type, center (bool), fit (bool),
+ * Plan the import: our fixture entries (rig.restore shape) and the room.
+ * opts: { typeFor(kindKey) -> type, center (bool), fit (bool),
  * room: {width, depth, height} (the current one) }.
  */
 export function planRig(mvr, { typeFor = null, center = true, fit = true, room = { width: 14, depth: 18, height: 6 } } = {}) {
@@ -223,62 +216,23 @@ export function planRig(mvr, { typeFor = null, center = true, fit = true, room =
     const label = f.name || `${kindLabel(f)}${f.fixtureId ? ` ${f.fixtureId}` : ''}`;
     return { type, label, pos, rot, universe: f.universe, startAddress: f.address };
   });
-  if (!entries.length) return { entries, room: { ...room }, aimed };
-  const xs = entries.map((e) => e.pos[0]), ys = entries.map((e) => e.pos[1]), zs = entries.map((e) => e.pos[2]);
-  const lo = (a) => Math.min(...a), hi = (a) => Math.max(...a);
-  if (center) {
-    const cx = (lo(xs) + hi(xs)) / 2, cz = (lo(zs) + hi(zs)) / 2;
-    for (const e of entries) { e.pos[0] = r4(e.pos[0] - cx); e.pos[2] = r4(e.pos[2] - cz); }
-  }
-  // floor fixtures below the floor (a stage below 0) sit on it
-  const minY = lo(ys);
-  if (minY < 0) for (const e of entries) e.pos[1] = r4(e.pos[1] - minY);
-  let out = { ...room };
-  if (fit) {
-    const ex = entries.map((e) => e.pos[0]), ez = entries.map((e) => e.pos[2]), ey = entries.map((e) => e.pos[1]);
-    const span = (a) => 2 * Math.max(Math.abs(lo(a)), Math.abs(hi(a)));
-    out = {
-      width: clampRoom(Math.ceil(span(ex) + 4), 8),
-      depth: clampRoom(Math.ceil(span(ez) + 6), 10),
-      height: clampRoom(Math.ceil(hi(ey) + 1), 4),
-    };
-  }
-  return { entries, room: out, aimed };
+  return { entries, room: finishPlacement(entries, { center, fit, room }), aimed };
 }
-const clampRoom = (v, min) => Math.max(min, Math.min(60, v));
 
-/**
- * Give every entry a universe/startAddress for OUR fixture models (which have
- * their own channel counts — usually not the plot's). keep: use the plot's
- * address where there is one; otherwise (and for fixtures the plot never
- * patched) take the next free span, starting in the entry's universe and
- * moving on when it's full. taken: spans already in the rig
- * [{universe, startAddress, channelCount}]. chOf(type) -> channel count.
- * Mutates entries; returns how many entries overlap another one.
- */
-export function assignAddresses(entries, chOf, { keep = true, taken = [] } = {}) {
-  const spans = taken.map((t) => ({ u: t.universe, s: t.startAddress, e: t.startAddress + Math.max(1, t.channelCount) - 1 }));
-  const fits = (u, s, n) => s + n - 1 <= 512 && !spans.some((x) => x.u === u && s <= x.e && x.s <= s + n - 1);
-  let overlaps = 0;
-  const free = [];
-  for (const e of entries) {
-    const n = chOf(e.type);
-    if (n <= 0) { e.universe = e.universe || 1; e.startAddress = e.startAddress || 1; continue; } // props: no DMX
-    if (keep && e.universe && e.startAddress) {
-      if (!fits(e.universe, e.startAddress, n)) overlaps++;
-      spans.push({ u: e.universe, s: e.startAddress, e: e.startAddress + n - 1 });
-    } else free.push(e);
-  }
-  for (const e of free) {
-    const n = chOf(e.type);
-    let u = e.universe || 1, s = 1;
-    for (;;) {
-      while (s + n - 1 <= 512 && !fits(u, s, n)) s++;
-      if (s + n - 1 <= 512) break;
-      u++; s = 1;
-    }
-    e.universe = u; e.startAddress = s;
-    spans.push({ u, s, e: s + n - 1 });
-  }
-  return overlaps;
+/** The import dialog's view of an MVR file (see ui/ImportRigDialog.js). */
+export function mvrSource(mvr, fileName) {
+  const skipped = [mvr.trusses && `${mvr.trusses} truss${mvr.trusses === 1 ? '' : 'es'}`, mvr.objects && `${mvr.objects} other object${mvr.objects === 1 ? '' : 's'}`].filter(Boolean).join(' and ');
+  return {
+    fileName,
+    format: 'MVR',
+    count: mvr.fixtures.length,
+    universes: new Set(mvr.fixtures.map((f) => f.universe).filter(Boolean)).size,
+    skipped: skipped ? `${skipped} ${mvr.trusses + mvr.objects === 1 ? "isn't" : "aren't"} imported (we only take fixtures)` : '',
+    notes: mvr.notes,
+    kinds: kindsOf(mvr.fixtures, kindKey, kindLabel, guessType),
+    plan: (opts) => planRig(mvr, opts),
+    shows: [],
+  };
 }
+
+export { assignAddresses };

@@ -60,6 +60,8 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
 - **Import a rig (MVR)** — bring in a plot from grandMA3, Vectorworks, Capture
   and others: positions, aim, names and patch, with each fixture matched to
   one of our types (you can change them).
+- **Import a QLC+ workspace** — the rig and a show from QLC+'s Show Manager,
+  turned into timeline cues with the exact timing.
 - **On the 3D view** — Select / Move / Rotate tools, a camera reset, haze, room
   light and house light, the laser output preview, and "Hold for sparks".
   Left-drag orbits, right-drag pans, scroll zooms.

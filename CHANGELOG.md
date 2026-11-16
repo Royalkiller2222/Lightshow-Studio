@@ -3,6 +3,41 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.12.0 — 2026-11-16
+
+Imports, part 2: **bring in a QLC+ workspace** (`.qxw`): the rig, and a
+show from its Show Manager as timeline cues.
+
+**Install:** download `LightshowStudio-Setup-0.12.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Import a QLC+ workspace
+- **Import a rig (MVR, QLC+)…** at the bottom of the Build library, or
+  **Import a QLC+ workspace…** in Ctrl+K. The same dialog as MVR import.
+- **The rig:** every fixture with its name, universe and address. Positions
+  come from QLC+'s 2D Monitor when you laid the rig out there; otherwise the
+  fixtures hang in rows by type. Each kind of fixture is matched to one of
+  our types (changeable), as for MVR.
+- **A show:** pick one of the workspace's Shows (or none) and choose whether
+  it replaces the timeline or is added to it. Each QLC+ track becomes a
+  timeline track per fixture group (PARs, movers…), and every item lands at
+  its exact start time and length:
+  - **Scene:** a level and a colour. The colour is read from the channel
+    values for generic RGB / RGBW / dimmer fixtures, otherwise from the
+    scene's name ("Red wash" is red).
+  - **Chaser / Sequence:** a chase at the real step time, or a two-colour
+    flip when the steps change colour.
+  - **EFX:** a circle or a wave movement at the real speed.
+  - **RGB Matrix:** a chase in its colours, or a rainbow.
+  - **Collection:** its parts merged into one look.
+  - **Laser fixtures:** a laser track with beams in the cue's colour.
+  - **Audio:** the toast names the song file to load. The show's BPM is used
+    when no song is loaded.
+- A workspace doesn't include its fixture definitions, so the cues are an
+  approximation in our own effects — the timing is exact. Blackouts are
+  skipped. The import is one edit: Ctrl+Z undoes it.
+
 ## v0.11.0 — 2026-11-16
 
 Imports, part 1: **bring in a rig from an MVR file**. MVR (My Virtual Rig) is
