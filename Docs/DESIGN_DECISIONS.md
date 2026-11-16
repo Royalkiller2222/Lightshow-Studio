@@ -448,6 +448,27 @@ curves live under the track"; these rules carried over unchanged.)
   is taken only when no song is loaded (a loaded song's detected tempo wins).
   The whole import is one `history.record()`.
 
+### Importing an xLights sequence (Stage 4c, v0.13.0)
+- **A sequence onto the current rig.** An `.xsq` names models but doesn't
+  define them (that's `xlights_rgbeffects.xml` in the show folder), so we
+  don't build a rig: each model is mapped to one of our fixture types — and
+  so a group — guessed from its name (most xLights models are pixels, so the
+  default is pixel bars) or left out. The dialog's kind rows are the models,
+  with "Not imported" as an extra choice (`allowSkip` on the source).
+- **A track per model,** not per group: xLights users think in models, and
+  it keeps a model's layered effects together. Cues on several tracks that
+  share a group merge as usual (HTP / LTP).
+- **Effects by name.** Pixel effects can't be reproduced on our fixtures, so
+  each effect name maps to the closest look: chases are beat-synced (they
+  follow the song you load), Color Wash fades over the cue (`ramp` at
+  1/duration Hz, cue-local time), flickers use the `random` wave, VU Meter
+  uses the audio band. Colours come from the palette's *checked* colours
+  (the first stop of a gradient); brightness from `C_SLIDER_Brightness`.
+- **Markers from one timing track,** chosen in the dialog; the default is the
+  track with the most labels and at most 200 marks (beat tracks would bury
+  the ruler). A track named "Beats" gives the BPM (median gap, folded into
+  70–180) when no song is loaded.
+
 ---
 
 ## Project persistence & undo

@@ -62,6 +62,8 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
   one of our types (you can change them).
 - **Import a QLC+ workspace** — the rig and a show from QLC+'s Show Manager,
   turned into timeline cues with the exact timing.
+- **Import an xLights sequence** — each model's effects as cues on your rig,
+  with a timing track as markers.
 - **On the 3D view** — Select / Move / Rotate tools, a camera reset, haze, room
   light and house light, the laser output preview, and "Hold for sparks".
   Left-drag orbits, right-drag pans, scroll zooms.

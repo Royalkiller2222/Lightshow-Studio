@@ -86,7 +86,8 @@ Show engine (timeline cues)            External console
   `LiveDirector` for live Auto). Pure, Node-testable.
 - **`src/import/`** — file imports: `zip.js` + `xml.js` (our own readers, no
   dependency), `rig.js` (shared: type guess, placement, addressing),
-  `mvr.js` (MVR rig) and `qlc.js` (QLC+ rig + shows → cues). Pure,
+  `mvr.js` (MVR rig), `qlc.js` (QLC+ rig + shows → cues) and `xlights.js`
+  (xLights sequence → cues + markers on the current rig). Pure,
   Node-testable. The dialog is `ui/ImportRigDialog.js` (works on a source adapter).
 - **UI (`src/ui/`)** — the window is *top bar / [library | 3D view | inspector] /
   bottom area*. `Shell` (Build / Program / Live workspaces, resizable panels,
@@ -112,7 +113,7 @@ Two tracks, both user-approved:
    Stage 2 (keyframe envelopes) are done; Stage 3 is split: **3a projectors +
    palettes ✔ (v0.8.0)**, **3b more patterns + ILDA import ✔ (v0.9.0)**,
    **3c Auto — live + pregenerated ✔ (v0.10.0)**. Imports: **4a MVR rig ✔ (v0.11.0)**,
-   **4b QLC+ `.qxw` ✔ (v0.12.0)**, next 4c xLights `.xsq`; then a
+   **4b QLC+ `.qxw` ✔ (v0.12.0)**, **4c xLights `.xsq` ✔ (v0.13.0)**; next the
    final user-documentation phase. Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**

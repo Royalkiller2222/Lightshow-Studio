@@ -942,7 +942,7 @@ details.more > .more-body { padding: 2px 0 4px; }
 .ird-ic .ico { display: block; }
 .ird-nm { color: var(--text-1); overflow-wrap: anywhere; }
 .ird-why { display: block; font-size: 11px; color: var(--text-3); }
-.ird-n { width: 44px; text-align: right; font: 12px var(--mono); color: var(--text-2); }
+.ird-n { width: 44px; text-align: right; white-space: nowrap; font: 12px var(--mono); color: var(--text-2); }
 .ird-ty { width: 160px; }
 .ird-ty select { width: 100%; }
 .tip.warn { background: var(--warn-soft); }

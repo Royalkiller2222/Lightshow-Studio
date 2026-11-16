@@ -110,13 +110,15 @@ src/
     Inspector.js         Right panel: fixture / venue / show views; hosts the
                          CueInspector for cues.
     FixtureLibrary.js    Build library: fixture cards (drag / + / double-click),
-                         "Place mirrored pairs", "Import a rig (MVR, QLC+)…".
-    ImportRigDialog.js   MVR / QLC+ import, on a *source* adapter (mvrSource /
-                         qlcSource: kinds, plan(), shows, buildShow()): one row
+                         "Place mirrored pairs", "Import (MVR, QLC+, xLights)…".
+    ImportRigDialog.js   MVR / QLC+ / xLights import, on a *source* adapter
+                         (mvrSource / qlcSource / xsqSource: kinds, plan(),
+                         shows, buildShow(), optional markerTracks): one row
                          per kind of fixture (count, guessed type + why, type
                          select), the options (replace/add, fit room, centre,
                          keep addresses/re-patch) with an overlap warning, and
-                         (QLC+) a Show picker + replace/add the timeline.
+                         (QLC+, xLights) a Show / Sequence picker, a markers
+                         timing track, replace/add the timeline.
                          app.js applyRigImport() / addImportedShow() apply it.
     ContentLibrary.js    Program library: pattern thumbnails + effects, search,
                          drag to the timeline / double-click to add.
@@ -195,6 +197,11 @@ src/
                          by type), convertShow() (Show tracks -> our tracks per
                          group; Scene/Chaser/Sequence/EFX/RGBMatrix/Collection
                          -> layers with exact timing), qlcSource().
+    xlights.js           readXsq() (.xsq: song, palettes, EffectDB, timing
+                         tracks, model effects), guessModel(), effectLayers()
+                         (xLights effect name + palette -> our layers),
+                         bpmFromTiming(), convertSequence(), xsqSource().
+                         No rig: models map onto the current rig's groups.
     mvr.js               readMvr() (scene + per-spec GDTF info), guessType(),
                          placeFixture() (MVR Z-up mm -> scene Y-up m, rotation
                          via C·R·Cᵀ -> Euler XYZ, laser/floor corrections),

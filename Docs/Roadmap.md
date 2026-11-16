@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Laser Stage 3 is complete too; imports are under way (4a MVR ✔, 4b QLC+ ✔; 4c xLights next).
+**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights); next up: user documentation.
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -79,9 +79,12 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
     chasers/sequences → chases, EFX → movement, RGB Matrix → colour chase,
     collections merged, lasers → laser cues, audio → "load this song". Same
     dialog as MVR (`ImportRigDialog` on a source adapter).
-  - **4c — ✗ NEXT (v0.13.0).** xLights `.xsq`: timing marks → markers, effects →
-    approximate cues.
-- **Final phase: user documentation.**
+  - **4c — xLights sequence import — ✔ v0.13.0.** `.xsq` onto the current
+    rig: each model mapped to one of our fixture types (guessed from its
+    name, or left out), each effect a cue at its exact time in its palette
+    colours (chase / flicker / fade / rainbow / audio / movement by effect
+    name); one timing track → markers, a "Beats" track → BPM.
+- **✗ NEXT — Final phase: user documentation.**
 
 ### Stage 2 follow-ups (small, pick any)
 - **Waveform mode per parameter** — BEYOND's "effect based on waveform": a

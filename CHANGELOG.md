@@ -3,6 +3,42 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.13.0 — 2026-11-16
+
+Imports, part 3: **bring in an xLights sequence** (`.xsq`) as timeline
+cues and markers. This completes the imports stage.
+
+**Install:** download `LightshowStudio-Setup-0.13.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Import an xLights sequence
+- **Import (MVR, QLC+, xLights)…** at the bottom of the Build library, or
+  **Import an xLights sequence…** in Ctrl+K.
+- A sequence doesn't include its models (xLights keeps them in the show
+  folder), so the effects land on **your current rig**. The dialog lists
+  each model with its number of effects and the fixtures it will play on,
+  guessed from its name: "MH" / moving head → movers, flood / PAR → PARs,
+  laser → lasers, spark → sparks, anything else → pixel bars. Change any of
+  them, or choose **Not imported** (for a house outline, say).
+- Each model becomes a timeline track, and every effect a cue at its exact
+  start and length, in the effect's palette colours and brightness:
+  - **On / Color Wash:** a level and the colour (a Color Wash fades between
+    its colours over the effect).
+  - **Bars, Single Strand, Marquee, Meteors, Spirals, Curtain, Wave…:** a
+    beat-synced chase.
+  - **Twinkle, Shimmer, Lightning, Snowflakes…:** a flicker. **Strobe:** a
+    strobe.
+  - **Fire:** a red-orange flicker. **Plasma, Butterfly, Kaleidoscope** (and
+    any 4+ colour palette): a rainbow.
+  - **VU Meter:** follows the song's bass. **Moving Head:** a movement.
+  - **Lasers:** laser cues. **Off** is skipped.
+  - Other effects (Pictures, Text, Video…): lit in the palette colour.
+- **Markers:** pick a timing track (the one with the most labels is chosen
+  for you, e.g. sections or lyrics). A "Beats" timing track also sets the
+  BPM when no song is loaded.
+- The toast names the song file to load. Ctrl+Z undoes the import.
+
 ## v0.12.0 — 2026-11-16
 
 Imports, part 2: **bring in a QLC+ workspace** (`.qxw`): the rig, and a
