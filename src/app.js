@@ -54,7 +54,7 @@ import { ImportRigDialog } from './ui/ImportRigDialog.js';
 import { readMvr, mvrSource } from './import/mvr.js';
 import { readQlc, qlcSource } from './import/qlc.js';
 import { readXsq, xsqSource } from './import/xlights.js';
-import { analyzeSong } from './auto/analyze.js';
+import { analyzeSong, applySongMap, songMapFits, editAt } from './auto/analyze.js';
 import { LiveDirector, generateShow, normalizeAutoSettings } from './auto/director.js';
 import { Welcome } from './ui/Welcome.js';
 import { Tour } from './ui/Tour.js';
@@ -355,12 +355,40 @@ function setAutoSettings(next) {
 }
 const projectorCount = () => Math.max(1, engine.projectors().length);
 
-function songAnalysis() {
+/** What the analysis heard (cached per song + grid). */
+function rawAnalysis() {
   const c = analysisCache;
   if (c && c.buffer === audio.buffer && c.bpm === transport.bpm && c.offset === transport.beatOffset) return c.an;
   const an = analyzeSong(audio.buffer, { bpm: transport.bpm, offset: transport.beatOffset || 0 });
   analysisCache = { buffer: audio.buffer, bpm: transport.bpm, offset: transport.beatOffset, an };
   return an;
+}
+/** The song map for the loaded song, or null (a map saved for another song is ignored). */
+const songMap = () => (audio.buffer && songMapFits(engine.songMap, audio.name, audio.duration) ? engine.songMap : null);
+/** The analysis with the user's song-map edits on top: what Pregenerate uses. */
+const songAnalysis = () => applySongMap(rawAnalysis(), songMap());
+/**
+ * Change one section on the song map (patch: { kind, mood }; null = back to
+ * what the music says). Undoable; saved with the show.
+ */
+function editSection(t, patch) {
+  const an = rawAnalysis();
+  const sec = an.sections.find((s) => Math.abs(s.t - t) < an.barLen / 2);
+  if (!sec) return;
+  const map = songMap() || { song: { name: audio.name, duration: Math.round(audio.duration * 100) / 100 }, edits: [] };
+  const edits = map.edits.filter((e) => e !== editAt(map, sec.t, an.barLen));
+  const e = { ...(editAt(map, sec.t, an.barLen) || {}), t: Math.round(sec.t * 1000) / 1000, ...patch };
+  if (!e.kind || e.kind === sec.kind) delete e.kind; // the same as heard = no edit
+  if (!e.mood) delete e.mood;
+  if (e.kind || e.mood) edits.push(e);
+  edits.sort((x, y) => x.t - y.t);
+  engine.songMap = edits.length ? { song: map.song, edits } : null;
+  history.record();
+}
+function resetSongMap() {
+  if (!songMap()) return;
+  engine.songMap = null;
+  history.record();
 }
 const autoTracks = () => engine.tracks.filter((t) => t.auto);
 
@@ -408,6 +436,8 @@ const autoDialog = new AutoShowDialog({
   hasSong: () => !!audio.buffer,
   onLoadSong: () => timeline.pickAudio(),
   analysis: songAnalysis,
+  editSection,
+  resetSongMap,
   getSettings: () => engine.autoSettings,
   setSettings: setAutoSettings,
   palettes: () => engine.palettes,

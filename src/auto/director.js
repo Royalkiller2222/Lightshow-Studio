@@ -215,7 +215,9 @@ export function generateShow(an, settings, { palettes = [], projectors = 1, seed
   const cues = [];
   const addPalettes = [];
   const hasPal = (id) => palettes.some((p) => p.id === id) || addPalettes.some((p) => p.id === id);
-  const moodOf = (sec) => (s.mood !== 'auto' ? s.mood : MOOD_STYLE[sec.mood] ? sec.mood : KIND_MOOD[sec.kind] || 'euphoric');
+  // a mood set on the song map wins, then the overall Mood, then what the audio says
+  const moodOf = (sec) => (sec.moodSet && MOOD_STYLE[sec.mood] ? sec.mood
+    : s.mood !== 'auto' ? s.mood : MOOD_STYLE[sec.mood] ? sec.mood : KIND_MOOD[sec.kind] || 'euphoric');
   const paletteOf = (mood) => {
     if (s.palette !== 'auto' && palettes.some((p) => p.id === s.palette)) return s.palette;
     const p = MOOD_PALETTES[mood];

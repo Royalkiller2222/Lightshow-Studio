@@ -20,9 +20,10 @@ import { importedPatterns, setImported, cleanText } from '../laser/patterns.js';
 import { serializeImported, loadImported, clampFps } from '../laser/ilda.js';
 import { defaultPalettes, normalizePalettes, normalizeColorRef, normalizeOutput, isDefaultOutput } from '../laser/palettes.js';
 import { normalizeAutoSettings } from '../auto/director.js';
+import { normalizeSongMap } from '../auto/analyze.js';
 
 // 5: imported ILDA patterns, cue text (Text pattern) + frame rate;
-//    later in 5 (optional fields): Auto settings, auto tracks/markers
+//    later in 5 (optional fields): Auto settings, auto tracks/markers, song map
 // 4: laser projectors (output settings, track targets) + palettes
 // 3: fixture cues are looks (layers) · 2: named tracks + markers · 1: anonymous lanes
 export const PROJECT_VERSION = 5;
@@ -119,6 +120,7 @@ export function serializeProject(ctx) {
       })),
     markers: (engine.markers || []).map((m) => ({ t: m.t, name: m.name, auto: m.auto || undefined })).sort((x, y) => x.t - y.t),
     auto: normalizeAutoSettings(engine.autoSettings), // Auto (live + pregenerate) settings
+    songMap: normalizeSongMap(engine.songMap) || undefined, // the user's section edits for Pregenerate
     audioName: audio.name || null,
   };
 }
@@ -151,6 +153,7 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
 
   engine.palettes = normalizePalettes(data.palettes) ?? defaultPalettes();
   engine.autoSettings = normalizeAutoSettings(data.auto);
+  engine.songMap = normalizeSongMap(data.songMap);
   setImported(loadImported(data.patterns));
 
   // Tracks: saved ones (v2), or derived from the old lanes (v1).

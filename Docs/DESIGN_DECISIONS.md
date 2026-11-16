@@ -437,6 +437,25 @@ curves live under the track"; these rules carried over unchanged.)
   so cues can reference them, they save and undo, and the user can edit
   them. Live Auto keeps its own three (Ice / Fire / Club).
 
+### The song map (Stage 5b, v0.15.0)
+- **Correct the analysis, don't replace it.** Rules get real songs wrong
+  sometimes: a drop with no bass lift, a quiet verse heard as a break. The
+  user picks a section and changes its type or mood. Everything else
+  (bars, energy, fills, the rest of the sections) still comes from the audio.
+- **Edits are keyed by start time** (matched within half a bar), not by
+  index. Re-analysing the same song lands the same cuts, so the edits
+  survive; if the BPM changes and the cuts move, unmatched edits just don't
+  apply.
+- **Tied to the song** by its name + length (`songMapFits`). Loading another
+  track starts with a clean map, without deleting the saved one.
+- **Kept as edits, applied late:** `applySongMap` is a pure layer over the
+  cached analysis, so the expensive pass never reruns for an edit. Names,
+  drop hits (a relabelled drop "hits" unless it continues a drop) and repeat
+  groups are worked out again. Relabelled sections of one kind share a motif.
+- **A section's own mood beats the overall Mood**: the more specific choice
+  wins, so "Dreamy show, Aggressive last drop" is possible.
+- Edits are show data, so they save, undo and redo like any other edit.
+
 ### Importing an MVR rig (Stage 4a, v0.11.0)
 - **Rig only, mapped to our types.** We don't simulate GDTF fixtures channel
   by channel; each MVR fixture becomes one of our fixture types, so it works

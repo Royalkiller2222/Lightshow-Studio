@@ -1,12 +1,17 @@
 // "Pregenerate an Auto show": reads the whole song (auto/analyze.js), shows
 // what it found — the energy of every bar, the sections (Intro, Build,
-// Drop…) with their mood, and where each drop hits — and writes an editable laser show onto the timeline with the
-// shared Auto settings. Generating again replaces the earlier Auto tracks with
-// a fresh take (a new seed).
+// Drop…) with their mood, and where each drop hits — and writes an editable
+// laser show onto the timeline with the shared Auto settings. Generating again
+// replaces the earlier Auto tracks with a fresh take (a new seed).
+//
+// The sections are a song map the user can correct before generating: click a
+// section (its chip or its part of the chart) to change its type or mood. The
+// edits are saved with the show (app.js editSection) and win over what the
+// analysis heard.
 
 import { icon } from './icons.js';
 import { esc, fmtTime } from './dom.js';
-import { MOOD_NAMES } from '../auto/analyze.js';
+import { MOOD_NAMES, SECTION_NAMES } from '../auto/analyze.js';
 import { autoForm, bindAutoForm } from './AutoPanel.js';
 
 // section colours come from the CSS tokens
@@ -16,6 +21,7 @@ const token = (name) => getComputedStyle(document.documentElement).getPropertyVa
 export class AutoShowDialog {
   /**
    * deps: hasSong(), onLoadSong(), analysis() -> analyzeSong result (cached),
+   *       editSection(t, { kind, mood }) (null = as heard), resetSongMap(),
    *       getSettings(), setSettings(s), palettes(), projectors(),
    *       autoTrackCount(), onGenerate()
    */
@@ -38,12 +44,40 @@ export class AutoShowDialog {
       if (act === 'close') this.close();
       else if (act === 'load') { this.close(); this.d.onLoadSong(); }
       else if (act === 'generate') { this.d.onGenerate(); this.close(); }
+      else if (act === 'reset-sec') { this.d.editSection(this.sel, { kind: null, mood: null }); this.render(); }
+      else if (act === 'reset-map') { this.d.resetSongMap(); this.render(); }
+      const sec = e.target.closest('[data-sec]');
+      if (sec) this.select(Number(sec.dataset.sec));
     });
+    this.root.addEventListener('change', (e) => {
+      const field = e.target.dataset?.secField;
+      if (!field || this.sel == null) return;
+      this.d.editSection(this.sel, { [field]: e.target.value || null });
+      this.render();
+      this.root.querySelector(`[data-sec-field="${field}"]`)?.focus();
+    });
+    // a click on the chart picks the section under it
+    this.root.addEventListener('pointerdown', (e) => {
+      if (e.target.dataset?.role !== 'energy' || !this._an) return;
+      const r = e.target.getBoundingClientRect();
+      const tt = ((e.clientX - r.left) / r.width) * this._an.duration;
+      const s = this._an.sections.find((q) => tt >= q.t && tt < q.end);
+      if (s) this.select(s.t);
+    });
+    this.sel = null; // start time of the section being edited
   }
 
   get isOpen() { return !this.root.hidden; }
 
+  /** Open the editor for the section starting at t (or close it, if it's open). */
+  select(t) {
+    this.sel = this.sel != null && Math.abs(this.sel - t) < 1e-3 ? null : t;
+    this.render();
+    this.root.querySelector('[data-sec-field="kind"]')?.focus();
+  }
+
   open() {
+    this.sel = null;
     this.back.hidden = false;
     this.root.hidden = false;
     this.render();
@@ -67,11 +101,15 @@ export class AutoShowDialog {
       return;
     }
     const an = this.d.analysis();
+    this._an = an;
+    const sel = this.sel == null ? null : an.sections.find((s) => Math.abs(s.t - this.sel) < 1e-3) || null;
+    if (!sel) this.sel = null;
     const n = this.d.autoTrackCount();
     this.root.innerHTML = `${head}<div class="ad-body">
       <canvas class="ad-energy" data-role="energy" height="84" aria-label="The song's energy per bar, with its sections"></canvas>
-      <div class="ad-secs">${an.sections.map((s) => `<span class="ad-sec" style="--k:var(${KIND_VAR[s.kind]})" title="${esc(s.name)}: ${fmtTime(s.t, false)}–${fmtTime(s.end, false)}${s.mood ? ` · ${MOOD_NAMES[s.mood]}` : ''}${s.repeat ? ' · a repeat' : ''}">${esc(s.name)}</span>`).join('')}</div>
-      <p class="ad-p muted small">${summary(an)}</p>
+      <div class="ad-secs" role="group" aria-label="Sections: click one to change it">${an.sections.map((s) => `<button type="button" class="ad-sec${s.edited ? ' edited' : ''}" data-sec="${s.t}" aria-pressed="${String(sel === s)}" style="--k:var(${KIND_VAR[s.kind]})" title="${esc(s.name)}: ${fmtTime(s.t, false)}–${fmtTime(s.end, false)}${s.mood ? ` · ${MOOD_NAMES[s.mood]}` : ''}${s.repeat ? ' · a repeat' : ''}${s.edited ? ' · changed by you' : ''}. Click to change it.">${esc(s.name)}</button>`).join('')}</div>
+      ${sel ? this._editor(sel) : ''}
+      <p class="ad-p muted small">${summary(an)}${an.sections.some((s) => s.edited) ? ' <button type="button" class="ad-link" data-act="reset-map">Undo all section changes</button>' : ''}</p>
       <div data-role="form"></div>
       <div class="tip">${icon('help', 'sm')}<div>${this.d.projectors() > 1 && this.d.getSettings().alternate ? 'Adds <b>Auto A</b> and <b>Auto B</b> laser tracks (odd and even projectors) at the top of the timeline. They play' : 'Adds an <b>Auto</b> laser track at the top of the timeline. It plays'} over your other laser tracks, and every cue can be edited.${n ? ` <b>Replaces the ${n === 1 ? 'earlier Auto track' : `${n} earlier Auto tracks`}</b> (and any edits to ${n === 1 ? 'it' : 'them'}).` : ''} Ctrl+Z undoes it.</div></div>
       </div>
@@ -84,6 +122,22 @@ export class AutoShowDialog {
     draw();
     bindAutoForm(form, () => this.d.getSettings(), (s) => { this.d.setSettings(s); draw(); });
     requestAnimationFrame(() => this._drawEnergy(an));
+  }
+
+  /** The editor row for one section: its type and mood. */
+  _editor(s) {
+    const heard = s.auto || s; // what the analysis said, before the user's edits
+    const overall = this.d.getSettings().mood;
+    const kinds = Object.keys(SECTION_NAMES).map((k) => `<option value="${k}"${s.kind === k ? ' selected' : ''}>${SECTION_NAMES[k]}${k === heard.kind ? ' (heard)' : ''}</option>`).join('');
+    const first = overall !== 'auto' ? `The show's Mood (${MOOD_NAMES[overall]})` : `From the music (${MOOD_NAMES[heard.mood] || 'none'})`;
+    const moods = [`<option value=""${s.moodSet ? '' : ' selected'}>${esc(first)}</option>`,
+      ...Object.keys(MOOD_NAMES).map((m) => `<option value="${m}"${s.moodSet && s.mood === m ? ' selected' : ''}>${MOOD_NAMES[m]}</option>`)].join('');
+    return `<div class="ad-edit" style="--k:var(${KIND_VAR[s.kind]})">
+      <span class="ad-edit-t"><b>${esc(s.name)}</b> ${fmtTime(s.t, false)}–${fmtTime(s.end, false)}</span>
+      <label>Type <select data-sec-field="kind" aria-label="Section type">${kinds}</select></label>
+      <label title="A mood set here wins over the show's Mood">Mood <select data-sec-field="mood" aria-label="Section mood">${moods}</select></label>
+      ${s.edited ? '<button type="button" class="btn ghost sm" data-act="reset-sec" title="Back to what the music says">Reset</button>' : ''}
+    </div>`;
   }
 
   _drawEnergy(an) {
@@ -117,6 +171,12 @@ export class AutoShowDialog {
       const dx = x(d.t);
       g.beginPath(); g.moveTo(dx - 5, H); g.lineTo(dx + 5, H); g.lineTo(dx, H - 8); g.closePath(); g.fill();
     }
+    const sel = an.sections.find((s) => this.sel != null && Math.abs(s.t - this.sel) < 1e-3);
+    if (sel) {
+      g.strokeStyle = token('--text-1');
+      g.lineWidth = 2;
+      g.strokeRect(x(sel.t) + 1, 1, x(sel.end) - x(sel.t) - 2, H - 2);
+    }
     g.font = `600 11px ${token('--font')}`;
     g.fillStyle = token('--text-1');
     for (const s of an.sections) if (x(s.end) - x(s.t) > 40) g.fillText(s.name, x(s.t) + 4, 13);
@@ -128,9 +188,9 @@ function summary(an) {
   const n = (k) => an.sections.filter((s) => s.kind === k).length;
   const plural = (c, w) => `${c} ${w}${c === 1 ? '' : 's'}`;
   const parts = [plural(an.sections.length, 'section')];
-  if ((an.drops || []).length) parts.push(`${plural(an.drops.length, 'drop')} (▲)`);
+  if (n('drop')) parts.push(`${plural(n('drop'), 'drop')}${(an.drops || []).length ? ' (▲ where the bass hits)' : ''}`);
   if (n('build')) parts.push(plural(n('build'), 'build'));
   const head = `${parts.join(' · ')} · ${an.bars.length} bars at ${Math.round(an.bpm * 10) / 10} BPM · ${fmtTime(an.duration, false)}.`;
   const grid = an.phase ? ` The drops land ${plural(an.phase, 'beat')} after the top bar's downbeat, so the sections follow the drops.` : '';
-  return `${head}${grid} Sections come from how the sound changes; hover one for its mood. Check the BPM in the top bar if the grid looks off.`;
+  return `${head}${grid} Sections come from how the sound changes; hover one for its mood, click it to change it. Check the BPM in the top bar if the grid looks off.`;
 }

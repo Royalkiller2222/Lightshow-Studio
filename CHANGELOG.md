@@ -3,6 +3,32 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.15.0 — 2026-11-16
+
+Content-aware Auto, part 2: **the song map.** Before you generate, you can
+correct what Pregenerate heard: change any section's type or mood.
+
+**Install:** download `LightshowStudio-Setup-0.15.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### Change a section
+- In **Auto show → Pregenerate**, click a section: its chip under the
+  chart, or its part of the chart. An editor row opens for it.
+- **Type:** Intro, Verse, Build, Drop, Break or Outro. What the music said
+  is marked "(heard)".
+  - Turn a section into a **Drop** and it opens like one: a dark beat
+    before it, then unison, a flash and a pop.
+  - Turn it into a **Build** and it becomes one rising cue.
+  - Section names and markers renumber themselves (Drop 1, Drop 2…).
+- **Mood:** Euphoric, Aggressive, Dreamy or Dark, or "From the music". A
+  mood set on a section wins over the show's overall Mood, so you can make a
+  whole show Dreamy except for one Aggressive drop.
+- Changed sections get a dot. **Reset** puts one back the way the music
+  says, and **Undo all section changes** resets them all.
+- Changes are **saved with the show** and are undoable. They belong to the
+  loaded song: a different song starts with a clean map.
+
 ## v0.14.0 — 2026-11-16
 
 Content-aware Auto, part 1: **Pregenerate now listens to the song properly.**

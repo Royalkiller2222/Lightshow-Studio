@@ -131,7 +131,9 @@ src/
     AutoPanel.js         Live Auto pad (A) + status/meter, and autoForm /
                          bindAutoForm: the settings form shared with the dialog.
     AutoShowDialog.js    "Pregenerate an Auto show": energy + sections + drops canvas,
-                         settings, Generate (app.js pregenerate() writes cues).
+                         the song-map editor (click a section: type, mood),
+                         settings, Generate (app.js pregenerate() writes cues;
+                         editSection() / resetSongMap() keep engine.songMap).
     Welcome.js           First-run screen: Demo / Empty venue / Open + Simple or
                          Pro + "show me around". Calls back; app.js loads the show.
     Tour.js              5-step spotlight tour (TOUR_STEPS: target selector,
@@ -218,7 +220,10 @@ src/
                          downbeatPhase(), findDrops() (bass + energy lift),
                          findSections() (novelty cuts on 4 bars anchored to
                          the first drop, builds by rising tension, kinds,
-                         repeat groups, moodOf()).
+                         repeat groups, moodOf()). Song map (5b):
+                         normalizeSongMap / songMapFits / editAt and
+                         applySongMap(an, map): the user's kind / mood edits
+                         on top (renames, drop hits, `edited`, `moodSet`).
     director.js          Settings (AUTO_DEFAULTS, normalizeAutoSettings, MOODS),
                          PATTERN_TIER (calm/medium/high), PATTERN_FEEL (mood
                          weights), MOOD_PALETTES; generateShow() (phrase-
@@ -382,7 +387,8 @@ cue.anim = {
   cues:[ { kind:'laser', pattern, start, duration, track:index, params, anim?, colorRef?, text?, fps? }
        | { kind:'fixture', name, groupId, start, duration, track:index, layers:[{effectKey, params}] } ],
   markers:[ { t, name, auto?:true } ],
-  auto:{ intensity, every, palette, groups, imported, alternate, markers, source },
+  auto:{ intensity, every, palette, groups, imported, alternate, markers, source, mood },
+  songMap?:{ song:{ name, duration }, edits:[ { t, kind?, mood? } ] },
   audioName }
 ```
 Version 1 (≤ v0.3.0) had no `tracks`/`markers` and a `lane` per cue;
@@ -392,7 +398,8 @@ no targets / palettes / laser output: tracks play on all projectors, the preset
 palettes load, cues keep their own colour. Versions ≤ 4 have no imported
 patterns (the registry is cleared). Files without `auto` (any version) get
 the default Auto settings; `auto: true` marks tracks/markers Pregenerate made
-(they're replaced when it runs again). These are optional fields, so the
+(they're replaced when it runs again); `songMap` holds the user's section
+edits for the song it names (ignored for any other song). These are optional fields, so the
 version stayed 5. `applyProject` clears, rebuilds the
 room (and re-hangs the house light) and fixtures (relinking mirror pairs by
 index), the tracks and markers, re-adds cues by kind onto their tracks (laser

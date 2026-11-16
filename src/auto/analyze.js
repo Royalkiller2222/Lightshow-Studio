@@ -443,3 +443,74 @@ export function findSections(bars, duration, drops = []) {
       mood: moodOf(s.energy, s.bright), group: s.group, repeat: s.repeat, hit: s.hit };
   });
 }
+
+// ---- the song map (5b): the user's corrections on top of the analysis ----
+
+/**
+ * A song map: { song: { name, duration }, edits: [{ t, kind?, mood? }] }.
+ * Saved with the show. `song` ties it to the loaded track (a different song
+ * ignores it); each edit finds its section by start time, so it survives a
+ * re-analysis that lands the same cuts.
+ */
+export function normalizeSongMap(m) {
+  if (!m || typeof m !== 'object' || !Array.isArray(m.edits)) return null;
+  const edits = m.edits
+    .filter((e) => e && Number.isFinite(e.t) && e.t >= 0)
+    .map((e) => {
+      const out = { t: Math.round(e.t * 1000) / 1000 };
+      if (SECTION_NAMES[e.kind]) out.kind = e.kind;
+      if (MOOD_NAMES[e.mood]) out.mood = e.mood;
+      return out;
+    })
+    .filter((e) => e.kind || e.mood);
+  const song = m.song && typeof m.song === 'object'
+    ? { name: String(m.song.name || ''), duration: Number.isFinite(m.song.duration) ? Math.round(m.song.duration * 100) / 100 : 0 }
+    : null;
+  return edits.length ? { song, edits } : null;
+}
+
+/** Does this map belong to the song (same name and length to 0.1 s)? */
+export function songMapFits(map, name, duration) {
+  return !!map?.song && map.song.name === name && Math.abs(map.song.duration - duration) < 0.1;
+}
+
+/** The edit for the section starting at t (within half a bar), if any. */
+export function editAt(map, t, barLen) {
+  return map?.edits.find((e) => Math.abs(e.t - t) < barLen / 2) || null;
+}
+
+/**
+ * The analysis with the map applied: kinds and moods replaced, then names,
+ * drop hits and repeat groups worked out again. Edited sections are flagged
+ * `edited`, and a mood the user picked `moodSet` (it beats the overall Mood).
+ * Pure: `an` is not changed.
+ */
+export function applySongMap(an, map) {
+  if (!map?.edits?.length) return an;
+  const secs = an.sections.map((s) => {
+    const e = editAt(map, s.t, an.barLen);
+    if (!e) return { ...s };
+    const out = { ...s, edited: true, auto: { kind: s.kind, mood: s.mood } };
+    if (e.kind && e.kind !== s.kind) {
+      out.kind = e.kind;
+      out.group = `edit-${e.kind}`; // relabelled sections of one kind share their looks
+      out.repeat = 0;
+    }
+    if (e.mood) { out.mood = e.mood; out.moodSet = true; }
+    return out;
+  });
+  // a drop now "hits" when it starts one (not when it continues the drop before it)
+  secs.forEach((s, i) => {
+    if (s.kind !== s.auto?.kind) s.hit = s.kind === 'drop' && secs[i - 1]?.kind !== 'drop';
+  });
+  // repeat counts within each relabelled group
+  const seen = {};
+  for (const s of secs) if (typeof s.group === 'string') s.repeat = (seen[s.group] = (seen[s.group] ?? -1) + 1);
+  const total = {}, count = {};
+  for (const s of secs) total[s.kind] = (total[s.kind] || 0) + 1;
+  for (const s of secs) {
+    count[s.kind] = (count[s.kind] || 0) + 1;
+    s.name = SECTION_NAMES[s.kind] + (total[s.kind] > 1 ? ` ${count[s.kind]}` : '');
+  }
+  return { ...an, sections: secs };
+}

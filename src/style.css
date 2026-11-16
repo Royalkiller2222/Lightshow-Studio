@@ -931,6 +931,24 @@ details.more > .more-body { padding: 2px 0 4px; }
   border: 1px solid color-mix(in srgb, var(--k) 60%, transparent);
   background: color-mix(in srgb, var(--k) 18%, transparent);
 }
+.ad-sec { font: inherit; font-size: 11.5px; cursor: pointer; position: relative; }
+.ad-sec:hover { background: color-mix(in srgb, var(--k) 30%, transparent); }
+.ad-sec[aria-pressed="true"] { border-color: var(--text-1); background: color-mix(in srgb, var(--k) 38%, transparent); }
+/* a section the user changed: a dot in the corner */
+.ad-sec.edited::after {
+  content: ''; position: absolute; top: -2px; right: -2px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--accent); border: 1px solid var(--bg-1);
+}
+.ad-energy { cursor: pointer; }
+/* the song-map editor for the picked section */
+.ad-edit {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 10px; padding: 8px 10px;
+  border-radius: var(--r-sm); border-left: 3px solid var(--k); background: var(--bg-2); font-size: 12.5px; color: var(--text-2);
+}
+.ad-edit-t { flex: 1 1 140px; color: var(--text-2); }
+.ad-edit-t b { color: var(--text-1); font-weight: 600; margin-right: 4px; }
+.ad-edit label { display: inline-flex; align-items: center; gap: 6px; }
+.ad-link { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .ad-p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 .ad-foot { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
 .ad-foot .grow { flex: 1; }

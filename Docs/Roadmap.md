@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Now: **content-aware Auto** (5a ✔ v0.14.0, 5b song map next), then user documentation.
+**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Content-aware Auto is complete too (5a ✔ v0.14.0, 5b ✔ v0.15.0); next up: user documentation.
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -96,9 +96,11 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
     opens drops in unison with a flash, saves its best for the biggest drop,
     reuses looks on repeats; an optional overall Mood (Euphoric / Dark /
     Dreamy / Aggressive) with four mood palettes.
-  - **✗ NEXT — 5b — song map (v0.15.0).** Relabel sections and set a mood per
-    section in the Pregenerate dialog before generating.
-- **✗ Final phase: user documentation** (after 5b).
+  - **5b — song map — ✔ v0.15.0.** Click a section in the Pregenerate
+    dialog (chip or chart) to change its type or mood; names, drop hits and
+    markers follow; a section mood beats the overall Mood. Saved with the
+    show (`songMap`, tied to the song), undoable.
+- **✗ NEXT — Final phase: user documentation.**
 
 ### Stage 2 follow-ups (small, pick any)
 - **Waveform mode per parameter** — BEYOND's "effect based on waveform": a

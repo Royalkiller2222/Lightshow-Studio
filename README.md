@@ -59,7 +59,8 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
   and the mood of each part) and writes an editable laser show onto the
   timeline, with section markers: looks change on phrases, builds rise into
   a dark beat, drops hit big, and the biggest drop gets the best. Pick an
-  overall mood (Euphoric, Dark, Dreamy, Aggressive) or let the music decide.
+  overall mood (Euphoric, Dark, Dreamy, Aggressive) or let the music decide,
+  and click any section to change its type or mood before generating.
 - **Import a rig (MVR)** — bring in a plot from grandMA3, Vectorworks, Capture
   and others: positions, aim, names and patch, with each fixture matched to
   one of our types (you can change them).
