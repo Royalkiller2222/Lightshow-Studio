@@ -21,6 +21,9 @@ real rig over Art-Net / sACN — or let a lighting console drive the 3D view.
 2. Run it. It installs for your Windows user (no admin needed), adds Start-menu
    and desktop shortcuts, and opens the app.
 
+After that the app checks for updates once a week and can download and install
+them itself (Settings → Updates, or **Check for updates** any time).
+
 Windows may say *"Windows protected your PC"* because the installer isn't
 code-signed yet — click **More info → Run anyway**. On first launch Windows
 Firewall asks about network access: allow it, or no DMX leaves the computer.
@@ -80,6 +83,9 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
   Left-drag orbits, right-drag pans, scroll zooms.
 - **Simple vs Pro** — Simple keeps just the essentials. Pro shows DMX
   addresses and every advanced control (tucked under "More").
+- **Settings** (the gear, Ctrl+,) — themes (**Dark**, **Blackout** for dark
+  rooms, **Light**, or **Custom** colours), the welcome screen at start-up,
+  reset panels, and updates.
 
 Press **?** for all keyboard shortcuts.
 

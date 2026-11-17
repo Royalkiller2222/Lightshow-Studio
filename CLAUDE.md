@@ -62,7 +62,10 @@ Show engine (timeline cues)            External console
 - **`main.js` + `dmx-io.js`** — Art-Net/sACN out + Art-Net in on a **steady
   40 Hz tick in the main process**, independent of the renderer frame rate, so a
   render hitch never strobes the rig. Bridged via `preload.js`
-  (`window.dmxBridge`). Renderer entry / composition root is `src/app.js`.
+  (`window.dmxBridge`; `window.appBridge` for version + updates).
+  **`updater.js`** (main) checks GitHub releases and downloads/runs the
+  installer (no electron-updater; see DESIGN_DECISIONS "Updates").
+  Renderer entry / composition root is `src/app.js`.
 - **`src/core/`** — `Rig` (fixtures + patch: spawn/place/remove, auto-patching,
   labels) and `project.js` (save/open JSON + whole-snapshot undo `History`).
 - **Show engine (`src/show/`)** — `ShowEngine` plays timeline **cues** and merges
@@ -98,7 +101,10 @@ Show engine (timeline cues)            External console
   Simple/Pro), `TopBar`, `ViewportOverlay`, `Inspector`, `FixtureLibrary`,
   `ContentLibrary`, `PatchSheet`, `CommandPalette` (Ctrl+K), `GuideReader`
   (F1: the user guide from `guide/*.md`, rendered by `markdown.js`), `LivePanel`,
-  `Welcome` (first-run screen) and `Tour` (5-step spotlight tour), plus `icons.js`,
+  `Welcome` (first-run screen), `Tour` (5-step spotlight tour),
+  `SettingsDialog` (gear / Ctrl+,: theme, start-up, interface, updates),
+  `theme.js` (Dark / Blackout / Light / Custom token sets; canvases use
+  `tc('--token')`) and `Updates` (weekly check + update popup), plus `icons.js`,
   `logo.js`, `dom.js`, `overlays.js`. The approved design is in
   DESIGN_DECISIONS "The interface".
 
@@ -122,7 +128,8 @@ Two tracks, both user-approved:
    **5a smarter listening + director ✔ (v0.14.0)**, **5b song map in the
    Pregenerate dialog ✔ (v0.15.0)**, then the **user guide ✔ (v0.16.0)**, then
    **tuning on the user's songs ✔ (v0.17.0: new tempo detector, sweeps,
-   one-sided sounds)**; next: more songs as the user adds them (they live in
+   one-sided sounds)**, then **Settings + themes + in-app updater ✔
+   (v0.18.0)**; next: more songs as the user adds them (they live in
    `../songs/`, outside the repo — never commit audio). Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**
@@ -179,8 +186,10 @@ npm run icons    # regenerate app/installer icons from src/ui/logo.js
   advanced controls `.pro` (hidden in Simple) or wrap them in `more()` (a "More"
   disclosure, Pro only); tag workspace-specific UI `data-ws-only="build|program"`.
   Colours come from the CSS tokens in `style.css` — never hard-code UI colours in
-  JS except show content (beams, curves). Every committed edit calls
-  `history.record()` (via the `onCommit`/`onEdit` callbacks).
+  JS except show content (beams, curves); canvases read tokens with
+  `tc('--token', alpha)` from `ui/theme.js` so every theme works. The 3D view,
+  laser preview and pattern thumbnails stay dark (show content). Every
+  committed edit calls `history.record()` (via the `onCommit`/`onEdit` callbacks).
 - **Keep the user guide (`guide/*.md`) in step with the UI.** A changed control,
   label or workflow means updating its page; the app shows the same files (F1).
 - **Never use `closest('[data-ws]')`-style lookups for attributes that `<body>`

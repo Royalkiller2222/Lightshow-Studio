@@ -17,6 +17,7 @@ import {
 } from '../laser/envelopes.js';
 import { icon } from '../ui/icons.js';
 import { esc, clamp } from '../ui/dom.js';
+import { tc } from '../ui/theme.js';
 import { SLOTS, slotOf, makeLayer, setLayer, lookLayers, LOOK_BY_KEY } from '../show/looks.js';
 import { lookName } from '../show/ShowEngine.js';
 import { snapTime, snapKeyU } from './snap.js';
@@ -848,7 +849,8 @@ export class TimelinePanel {
   }
 
   /** Beat grid lines in [0, w): bars strong, beats faint, thinned when crowded. */
-  _grid(ctx, w, h, strong = 'rgba(120,150,200,0.30)', faint = 'rgba(90,110,150,0.12)') {
+  _grid(ctx, w, h, dim = 1) {
+    const strong = tc('--tl-bar', dim), faint = tc('--tl-beat', dim);
     const beat = 60 / (this.transport.bpm || 120);
     const off = this.transport.beatOffset || 0;
     const pxBeat = beat * this.pps;
@@ -870,7 +872,7 @@ export class TimelinePanel {
     const s = this._sizeCanvas(this.ruler);
     if (!s) return;
     const { ctx, w, h } = s;
-    ctx.fillStyle = '#111418';
+    ctx.fillStyle = tc('--tl-ruler');
     ctx.fillRect(0, 0, w, h);
     const beat = 60 / (this.transport.bpm || 120);
     const off = this.transport.beatOffset || 0;
@@ -884,9 +886,9 @@ export class TimelinePanel {
       const t = off + b * bar;
       const x = this.x(t);
       if (x > w) break;
-      ctx.strokeStyle = 'rgba(140,160,200,0.45)';
+      ctx.strokeStyle = tc('--tl-tick');
       ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, h - 9); ctx.lineTo(Math.round(x) + 0.5, h); ctx.stroke();
-      ctx.fillStyle = '#7d8592';
+      ctx.fillStyle = tc('--tl-num');
       ctx.fillText(String(b + 1), x + 3, h - 11);
     }
     // markers
@@ -894,10 +896,10 @@ export class TimelinePanel {
       const x = this.x(m.t);
       if (x < -120 || x > w) continue;
       const sel = m === this.selectedMarker;
-      ctx.fillStyle = sel ? '#ffd27a' : '#e0a43a';
+      ctx.fillStyle = sel ? tc('--c-key') : tc('--warn');
       ctx.beginPath(); ctx.moveTo(x, h); ctx.lineTo(x, 2); ctx.lineTo(x + 8, 5); ctx.lineTo(x, 9); ctx.fill();
       ctx.fillRect(x - 0.5, 2, 1.5, h - 2);
-      ctx.fillStyle = sel ? '#ffe2a8' : '#c9b48a';
+      ctx.fillStyle = sel ? tc('--text-1') : tc('--text-2');
       ctx.fillText(m.name, x + 10, 10);
     }
     this._playheadLine(ctx, h, 2);
@@ -907,7 +909,7 @@ export class TimelinePanel {
     const s = this._sizeCanvas(this.wave);
     if (!s) return;
     const { ctx, w, h } = s;
-    ctx.fillStyle = '#0d0f12';
+    ctx.fillStyle = tc('--tl-wave');
     ctx.fillRect(0, 0, w, h);
     const mid = h / 2;
     if (this.transport.hasAudio) {
@@ -918,7 +920,7 @@ export class TimelinePanel {
       }
       const p = this._wave.peaks;
       if (p) {
-        ctx.strokeStyle = '#3c5f94';
+        ctx.strokeStyle = tc('--tl-waveline');
         ctx.beginPath();
         for (let x = 0; x < w; x++) {
           ctx.moveTo(x + 0.5, mid + p[x * 2] * mid * 0.92);
@@ -927,7 +929,7 @@ export class TimelinePanel {
         ctx.stroke();
       }
     } else {
-      ctx.fillStyle = '#4f5763';
+      ctx.fillStyle = tc('--tl-hint');
       ctx.font = '11px "Segoe UI", sans-serif';
       ctx.fillText('Load a song to see its waveform — tempo and beats are detected for you', 10, mid + 4);
     }
@@ -937,7 +939,7 @@ export class TimelinePanel {
 
   _playheadLine(ctx, h, width) {
     const x = this.x(this.transport.time);
-    ctx.strokeStyle = '#ff5c7a';
+    ctx.strokeStyle = tc('--c-play');
     ctx.lineWidth = width;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
     ctx.lineWidth = 1;
@@ -950,15 +952,15 @@ export class TimelinePanel {
     const spec = PARAM_BY_KEY[key];
     const g = this._laneGeom(canvas);
     const focused = this.curveFocus?.trackId === track.id && this.curveFocus.key === key;
-    ctx.fillStyle = focused ? '#0e1512' : '#0b0d10';
+    ctx.fillStyle = tc(focused ? '--tl-lane-cur' : '--tl-lane');
     ctx.fillRect(0, 0, w, h);
-    this._grid(ctx, w, h, 'rgba(120,150,200,0.16)', 'rgba(90,110,150,0.06)');
+    this._grid(ctx, w, h, 0.5);
     for (const cue of this.engine.cues) {
       if (cue.track !== track.id) continue;
       const x0 = this.x(cue.start), x1 = this.x(cue.start + cue.duration);
       if (x1 < 0 || x0 > w) continue;
       const sel = cue === this.selected;
-      ctx.fillStyle = sel ? 'rgba(35,168,118,0.14)' : 'rgba(35,168,118,0.06)';
+      ctx.fillStyle = tc('--c-laser', sel ? 0.14 : 0.06);
       ctx.fillRect(x0, 0, x1 - x0, h);
       const animated = isAnimated(cue, key);
       const a = Math.max(0, Math.floor(x0)), b = Math.min(w, Math.ceil(x1));
@@ -969,7 +971,7 @@ export class TimelinePanel {
           ctx.fillRect(x, g.t + (g.b - g.t) * 0.3, 2, (g.b - g.t) * 0.4);
         }
       } else {
-        ctx.strokeStyle = animated ? (sel ? '#5fe0ac' : 'rgba(95,224,172,0.7)') : 'rgba(95,224,172,0.3)';
+        ctx.strokeStyle = tc('--c-laser-hi', animated ? (sel ? 1 : 0.7) : 0.3);
         ctx.lineWidth = 1.5;
         if (!animated) ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -985,17 +987,17 @@ export class TimelinePanel {
       if (animated) {
         for (const k of cue.anim[key].keys) {
           const x = this.x(cue.start + k.t * cue.duration), y = this._keyY(spec, k, g);
-          ctx.fillStyle = this.curveSel?.k === k ? '#ffffff' : '#f0a742';
+          ctx.fillStyle = this.curveSel?.k === k ? tc('--text-1') : tc('--c-key');
           ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x + 5, y); ctx.lineTo(x, y + 5); ctx.lineTo(x - 5, y); ctx.closePath(); ctx.fill();
-          ctx.strokeStyle = '#0b0d10'; ctx.stroke();
+          ctx.strokeStyle = tc('--tl-lane'); ctx.stroke();
         }
       }
       // clip edges
-      ctx.strokeStyle = 'rgba(95,224,172,0.25)';
+      ctx.strokeStyle = tc('--c-laser-hi', 0.25);
       ctx.beginPath(); ctx.moveTo(x0 + 0.5, 0); ctx.lineTo(x0 + 0.5, h); ctx.moveTo(x1 - 0.5, 0); ctx.lineTo(x1 - 0.5, h); ctx.stroke();
     }
     if (spec.kind !== 'color') {
-      ctx.fillStyle = '#4f5763';
+      ctx.fillStyle = tc('--tl-hint');
       ctx.font = '9.5px "Segoe UI", sans-serif';
       ctx.fillText(spec.fmt(spec.max), 3, 11);
       ctx.fillText(spec.fmt(spec.min), 3, h - 3);

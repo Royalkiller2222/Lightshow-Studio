@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Content-aware Auto is complete too (5a ✔ v0.14.0, 5b ✔ v0.15.0), and so is the user guide (✔ v0.16.0). Auto was then tuned on a real song (✔ v0.17.0: new tempo detector, sweeps, one-sided sounds).
+**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Content-aware Auto is complete too (5a ✔ v0.14.0, 5b ✔ v0.15.0), and so is the user guide (✔ v0.16.0). Auto was then tuned on a real song (✔ v0.17.0: new tempo detector, sweeps, one-sided sounds). Settings, themes and an in-app updater followed (✔ v0.18.0).
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -120,6 +120,11 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
   - The dialog shows both under the energy chart; two switches (Follow
     sweeps, Follow sides); tempo-aware look length; drops that sound
     different stay separate sections.
+- **Settings, themes and updates — ✔ v0.18.0.** A Settings dialog (gear,
+  Ctrl+,) with four themes (Dark default, Blackout, Light, Custom with 14
+  colours), the start-up welcome switch, Simple/Pro and Reset panels; and
+  an in-app updater: a weekly check (and a button) that pops up what's new,
+  downloads the installer with progress, checks it and installs on restart.
 - **NEXT:** more songs as the user adds them (other genres will find other
   misses), then the user's call.
 

@@ -703,6 +703,26 @@ option won each time. **Don't re-litigate these** — refine within them.
   keyframe amber, the pink playhead.
 - **Why:** Chosen over "Neon club" and "Laser green": the UI must never compete
   with the show being designed, and it reads as a calm pro tool.
+- **Themes (v0.18.0):** graphite stays the default ("Dark"). The user asked
+  for **Blackout** (near-black, dim text, for dark venues), **Light** and
+  **Custom** (14 pickable colours) in a new Settings dialog. All four are
+  token sets: `data-theme` on `<html>` switches a `:root[data-theme=…]` block
+  in `style.css`; Custom writes its 14 picked tokens inline on `<html>` and
+  the `:root[data-theme="custom"]` block derives the rest (hover shades,
+  `-soft`/`-hi` variants, dim text) with `color-mix`, so a user can't pick an
+  inconsistent half-theme. `data-tone` (light/dark, from the
+  luminance of the panel colour) picks scrims, shadows and dark cue-clip labels for a light
+  custom theme. `ui/theme.js` owns it; the choice is a per-computer pref
+  (`lss.theme`, `lss.theme.custom`), never in the show file.
+- **What stays dark:** the 3D view, the galvo preview and the pattern
+  thumbnails are *show content* — they keep the room's look in every theme
+  so a laser looks the way it will in the venue.
+- **Canvases read tokens too.** Every hard-coded UI colour (timeline canvas,
+  Auto chart, cue clips) became a token (`--tl-*`, `--on-accent`, `--scrim`,
+  …). Canvas code calls `tc('--name', alpha)` (`theme.js`), which resolves a
+  token through a probe element and caches it until the theme changes —
+  canvases can't use `var()` directly. `main.js` gets the theme's background
+  (`app:background` IPC) so a resize or reload doesn't flash the old colour.
 
 ### One inspector, driven by selection
 - **Decision:** The right panel edits whatever was picked most recently — a
@@ -910,6 +930,37 @@ option won each time. **Don't re-litigate these** — refine within them.
 - **Why:** "Just run an exe they install" — no wizard pages, no admin prompt.
 - **Known:** it isn't code-signed (a certificate costs money), so SmartScreen
   warns on first run; README and release notes explain "More info → Run anyway".
+
+### Updates: our own small updater, weekly, download + install in-app (v0.18.0)
+- **Decision:** `updater.js` (main process) asks the GitHub API for the
+  latest release, compares versions, and on request downloads that release's
+  `LightshowStudio-Setup-x.y.z.exe` to `%TEMP%\LightshowStudio-update\` with
+  progress, then runs it detached and quits; the one-click installer replaces
+  the app and opens the new version. `ui/Updates.js` (renderer) checks at
+  start-up when a week has passed (the "once a week" switch in Settings,
+  default on) and when you press **Check for updates**, and shows the popup:
+  what's new (the release notes = the CHANGELOG section) → Download and
+  install / Later / Skip this version.
+- **Why not electron-updater:** hard constraint 4 (no new dependencies), and
+  it needs `latest.yml` + blockmaps published by CI. Ours needs only what
+  `release.yml` already publishes: the installer and its GitHub-listed size
+  and SHA-256 `digest`. The user chose "download + install in-app" over
+  "open the download page".
+- **Safety:** the renderer never passes a URL or path. Main only downloads
+  the asset of the release *it* found, only from
+  `https://github.com/Royalkiller2222/Lightshow-Studio/releases/download/`,
+  checks size and SHA-256 (a mismatch deletes it), and only runs the file it
+  downloaded. The User-Agent is the generic `LightshowStudio-updater`;
+  nothing about the user or their shows is sent.
+- **Never interrupts a show:** a weekly result waits while a loaded song is
+  playing or Live is open (the song-less demo loop doesn't count — it plays
+  at every start-up). A dirty show gets "Save the show" / "Install without
+  saving" before installing. Skip only silences the *weekly* check for that
+  version; the button always shows the newest.
+- **Testing:** `LSS_UPDATE_FAKE_VERSION=0.1.0` makes the app think it's old.
+  Unpackaged (`npm start`), install is a dry run (a toast with the file's
+  path) unless `LSS_UPDATE_RUN=1`. The installer is unsigned, so SmartScreen
+  warns; the popup says "More info → Run anyway".
 
 ### electron-builder drops `three/examples` unless told not to
 - **Decision:** `build.onNodeModuleFile` points at `scripts/builder-include.js`,

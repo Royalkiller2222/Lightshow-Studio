@@ -24,8 +24,9 @@ dip into.
 8. [Live](08-live.md): pads, masters, blackout and performing
 9. [Importing](09-importing.md): ILDA, MVR, QLC+ and xLights files
 10. [DMX output](10-dmx-output.md): Art-Net, sACN and following a console
-11. [Keyboard shortcuts](11-shortcuts.md)
-12. [Troubleshooting](12-troubleshooting.md)
+11. [Settings and updates](11-settings.md): themes, start-up, checking for updates
+12. [Keyboard shortcuts](12-shortcuts.md)
+13. [Troubleshooting](13-troubleshooting.md)
 
 ## Opening this guide in the app
 

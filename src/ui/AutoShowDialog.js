@@ -13,12 +13,14 @@
 
 import { icon } from './icons.js';
 import { esc, fmtTime } from './dom.js';
+import { tc } from './theme.js';
 import { MOOD_NAMES, SECTION_NAMES } from '../auto/analyze.js';
 import { autoForm, bindAutoForm } from './AutoPanel.js';
 
 // section colours come from the CSS tokens
 const KIND_VAR = { intro: '--c-fixture-hi', verse: '--c-fixture', build: '--warn', drop: '--c-play', break: '--c-laser', outro: '--c-fixture-hi' };
-const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || 'gray';
+// (theme colours resolve through tc(): a Custom theme's mixed shades are color-mix() text until computed)
+const token = (name) => tc(name);
 const BARS_H = 84, STRIP_H = 24; // the chart: energy bars, and the sweep / side strip under them
 
 export class AutoShowDialog {
@@ -205,7 +207,7 @@ export class AutoShowDialog {
       g.lineWidth = 2;
       g.strokeRect(x(sel.t) + 1, 1, x(sel.end) - x(sel.t) - 2, H - 2);
     }
-    g.font = `600 11px ${token('--font')}`;
+    g.font = `600 11px ${getComputedStyle(document.documentElement).getPropertyValue('--font').trim()}`;
     g.fillStyle = token('--text-1');
     for (const s of an.sections) if (x(s.end) - x(s.t) > 40) g.fillText(s.name, x(s.t) + 4, 13);
   }

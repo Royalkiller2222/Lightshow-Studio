@@ -4,6 +4,28 @@
 
 **Windows says "Windows protected your PC".**
 The installer isn't code-signed yet. Click **More info → Run anyway**.
+The same happens when an update installs.
+
+## Updates
+
+**"Couldn't check for updates".**
+The app couldn't reach GitHub. Check the internet connection and try
+**Check for updates** in Settings again. "GitHub is limiting requests"
+means too many checks from your network in the last hour; wait an hour.
+
+**"The download was damaged".**
+The installer that arrived wasn't the same size, or didn't have the same
+fingerprint, as the one published, so the app threw it away. Press **Try
+again**. If it keeps happening, get the installer from the link in the
+window instead.
+
+**I skipped a version and now want it.**
+Open Settings and press **Check for updates**. It always shows the newest
+version, skipped or not.
+
+**The update window never appears.**
+Check that **Check for updates once a week** is on in Settings. The window
+also waits while a song is playing or Live is open.
 
 ## Seeing the show
 

@@ -87,6 +87,17 @@ export class Shell {
 
   _save() { prefs.set('layout', this.layout); }
 
+  /** Every workspace's panels back to their first sizes, all shown (Settings). */
+  resetLayout() {
+    for (const ws of WORKSPACES) {
+      const d = DEFAULTS[ws.id];
+      this.layout[ws.id] = { ...d, open: { ...d.open } };
+    }
+    this._save();
+    this._apply();
+    this._emit();
+  }
+
   _apply() {
     const L = this.layout[this._ws];
     const b = this.body;

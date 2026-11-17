@@ -3,6 +3,49 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.18.0 — 2026-11-16
+
+**Settings, themes and updates.** A new **Settings** window (the gear in the
+top bar, or Ctrl+,) with four themes, and the app now checks for updates
+itself and can install them for you.
+
+**Install:** download `LightshowStudio-Setup-0.18.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**. From this
+version on, the app finds the next update itself.
+
+### Updates
+- Once a week, a few seconds after the app starts, it asks GitHub whether a
+  newer version is out. If there is one, a window shows what's new.
+- **Download and install** downloads the installer with a progress bar,
+  checks it isn't damaged, and **Install and restart** closes the app and
+  runs it. The new version opens when it's done.
+- **Later** asks again next week; **Skip this version** stops the weekly
+  check telling you about that version.
+- It never interrupts a show: while a song is playing or Live is open, the
+  window waits.
+- If the show has unsaved changes, you get **Save the show** first.
+- **Check for updates** in Settings asks straight away. The weekly check can
+  be turned off there.
+
+### Themes
+- **Dark** (the default, as before), **Blackout** (almost black, for dark
+  rooms and shows), **Light**, and **Custom**: pick 14 colours (background,
+  panels, text, accent, timeline, playhead, clip colours…) and the app
+  changes as you drag. Start again from Dark or Light at any time.
+- The timeline, the Auto chart and every dialog follow the theme. The 3D
+  view, the laser preview and the pattern pictures stay dark, so the lasers
+  look the way they will in the room.
+
+### Also in Settings
+- **Show the welcome screen every time the app starts.**
+- The **Simple / Pro** switch, and **Reset panels** to put every
+  workspace's panels back to their first sizes.
+
+### User guide
+- New page: **Settings and updates**. Troubleshooting has an Updates
+  section; the shortcuts list has Ctrl+,.
+
 ## v0.17.0 — 2026-11-16
 
 **Auto follows sweeps and stereo**, and the tempo detection is rebuilt. Tuned

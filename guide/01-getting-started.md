@@ -8,6 +8,9 @@
    Start-menu and desktop shortcuts, and opens the app. Running a newer
    installer later updates the app in place.
 
+After that, the app checks for new versions itself, once a week, and can
+download and install them for you (see [Settings and updates](11-settings.md#updates)).
+
 Windows may say **"Windows protected your PC"** because the installer isn't
 code-signed yet. Click **More info → Run anyway**.
 
@@ -43,6 +46,7 @@ laser drawing a spinning, breathing tunnel. With no song loaded, the
   - the **Simple / Pro** switch
   - the **output pill**, which shows where DMX is going (click it to change)
   - **Search** (Ctrl+K)
+  - the **gear** for [Settings](11-settings.md): theme, start-up, updates
   - **?** for shortcuts, the tour and this guide
 - **Library** (left): what you can add. That's fixtures in Build, and laser
   patterns, looks and effects in Program.

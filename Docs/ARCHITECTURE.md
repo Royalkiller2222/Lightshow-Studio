@@ -48,9 +48,18 @@ model.
   renderer and sends Art-Net/sACN; also runs the Art-Net receiver for External
   mode and forwards incoming DMX to the renderer. It also keeps the window on
   the app: `window.open` and link navigations are denied, and http(s) URLs go
-  to the system browser (`shell.openExternal`).
+  to the system browser (`shell.openExternal`), and follows the theme's
+  background colour (`app:background`).
+- **Updater** (`updater.js`, main process): `update:check` asks the GitHub API
+  for the latest release; `update:download` streams its
+  `LightshowStudio-Setup-x.y.z.exe` to `%TEMP%\LightshowStudio-update\` (progress
+  events, size + SHA-256 check); `update:install` runs it detached and quits.
+  The renderer never passes a URL or path. `ui/Updates.js` decides when.
 - **Preload** (`preload.js`): `contextBridge` exposes `window.dmxBridge`
-  (`pushUniverses`, `setConfig`, `onArtNetIn`). The only renderer↔main channel.
+  (`pushUniverses`, `setConfig`, `onArtNetIn`) and `window.appBridge`
+  (`version`, `checkForUpdates`, `downloadUpdate`, `cancelDownload`,
+  `onUpdateProgress`, `installUpdate`, `setBackground`). The only
+  renderer↔main channels.
 - **Renderer** (`src/app.js` + modules): the 3D scene, show engine, timeline,
   placement tools, UI. This is where almost everything lives.
 - **`dmx-io.js`**: pure Node `dgram` Art-Net/sACN senders + Art-Net receiver.
@@ -152,6 +161,17 @@ src/
                          Pro + "show me around". Calls back; app.js loads the show.
     Tour.js              5-step spotlight tour (TOUR_STEPS: target selector,
                          workspace, panel to open); restores the workspace.
+    SettingsDialog.js    Settings (gear, Ctrl+,): Theme cards + Custom colour
+                         pickers (live), Start-up welcome, Simple/Pro + Reset
+                         panels, Updates (version, status, Check, weekly switch).
+    theme.js             Themes: THEMES, CUSTOM_KEYS (14 pickable tokens),
+                         setTheme/applyTheme (data-theme + data-tone on <html>),
+                         tc(token, alpha) — a token as a canvas colour, cached
+                         until the theme changes.
+    Updates.js           The update popup + weekly check (prefs updates.auto /
+                         .last / .skip): info → downloading → ready (save
+                         first if dirty) → install; waits while a song plays
+                         or Live is open. Talks to updater.js via appBridge.
     icons.js / logo.js   Hand-drawn SVG icon set; the logo generator.
     dom.js / overlays.js Helpers (esc, fmtTime, colour, prefs, more()); popovers
                          and toasts.
@@ -320,7 +340,7 @@ src/
                          nextFreeAddress, clear).
 
 guide/
-  README.md, 01-…12-*.md The user guide (shown on GitHub and by ui/GuideReader.js).
+  README.md, 01-…13-*.md The user guide (shown on GitHub and by ui/GuideReader.js).
                          README's links set the page order; img/ holds the
                          screenshots. Shipped in the installer (package.json
                          build.files).

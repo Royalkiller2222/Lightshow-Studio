@@ -15,6 +15,7 @@ command; it shows each command's shortcut too.
 | Ctrl+Y (or Ctrl+Shift+Z) | Redo |
 | Ctrl+S | Save the show |
 | Ctrl+O | Open a show |
+| Ctrl+, | Settings: theme, start-up, updates |
 | Ctrl+1 / Ctrl+2 / Ctrl+3 | Build / Program / Live workspace |
 | B | Blackout on / off |
 | Del | Delete the selected fixture, cue or keyframe |

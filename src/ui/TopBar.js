@@ -1,7 +1,8 @@
 // The top bar: project name, file + undo actions, workspace tabs, transport
 // (play / stop / time / BPM), Simple-Pro switch, the output status pill (opens
-// the Art-Net / sACN settings), command search and help. It owns no state of
-// its own — it reads the transport/shell and calls back into the app.
+// the Art-Net / sACN settings), command search, Settings (the gear) and help.
+// It owns no state of its own — it reads the transport/shell and calls back
+// into the app.
 
 import { icon } from './icons.js';
 import { logoSvg } from './logo.js';
@@ -15,7 +16,7 @@ export class TopBar {
    * @param {object} deps
    *   transport, shell,
    *   getDuration(): seconds shown after the playhead time,
-   *   actions: { open, save, undo, redo, search, setBpm(v), tempoHalf, tempoDouble, playPause, stop, welcome, tour, guide },
+   *   actions: { open, save, undo, redo, search, setBpm(v), tempoHalf, tempoDouble, playPause, stop, welcome, tour, guide, settings },
    *   output: { get(): {mode, artnetIp, sacn}, set(patch) }
    */
   constructor(root, { transport, shell, getDuration, actions, output }) {
@@ -66,6 +67,7 @@ export class TopBar {
         <span class="dot"></span><span data-role="out-label">Art-Net</span><span class="ip" data-role="out-ip"></span>${icon('chev-down', 'sm')}
       </button>
       <button type="button" class="tb-search" data-act="search" title="Search every command (Ctrl+K)">${icon('search', 'sm')}<span class="lbl">Search</span><kbd>Ctrl K</kbd></button>
+      <button type="button" class="btn ghost icon" data-act="settings" title="Settings: theme, start-up, updates (Ctrl+,)" aria-label="Settings">${icon('gear')}</button>
       <button type="button" class="btn ghost icon" data-role="help" title="Shortcuts and help (?)" aria-label="Help">${icon('help')}</button>`;
 
     this.$ = (s) => root.querySelector(s);
@@ -163,6 +165,7 @@ export class TopBar {
         ${k('Ctrl+K', 'Search every command')}
         ${k('Ctrl+Z', 'Undo')}${k('Ctrl+Y', 'Redo')}
         ${k('Ctrl+S', 'Save the show')}${k('Ctrl+O', 'Open a show')}
+        ${k('Ctrl+,', 'Settings')}
         ${k('Ctrl+1', 'Build workspace')}${k('Ctrl+2', 'Program workspace')}${k('Ctrl+3', 'Live workspace')}
         ${k('B', 'Blackout on / off')}
         <span class="hd">Program</span>

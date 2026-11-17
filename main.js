@@ -1,12 +1,14 @@
 // Electron main process: opens the window and runs DMX hardware I/O on a
 // steady 40 Hz tick, independent from the renderer's frame rate (mirrors the
-// dedicated-thread design from the Unity version).
+// dedicated-thread design from the Unity version). "Check for updates" lives
+// in updater.js.
 
 'use strict';
 
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const { ArtNetSender, ArtNetReceiver, SacnSender } = require('./dmx-io.js');
+const { registerUpdater } = require('./updater.js');
 
 let win = null;
 let artnetIn = null;
@@ -56,6 +58,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerUpdater();
   createWindow();
 
   // Art-Net input: lets any console drive the visualizer (External mode).
@@ -87,6 +90,11 @@ ipcMain.on('dmx:universes', (_e, list) => {
 ipcMain.on('dmx:config', (_e, cfg) => {
   Object.assign(config, cfg);
   if (cfg.artnetIp) artnetOut.setTarget(cfg.artnetIp);
+});
+
+// The theme's background colour, so a resize or reload doesn't flash dark.
+ipcMain.on('app:background', (_e, hex) => {
+  if (win && !win.isDestroyed() && /^#[0-9a-f]{6}$/i.test(hex)) win.setBackgroundColor(hex);
 });
 
 app.on('window-all-closed', () => {

@@ -1,6 +1,9 @@
-/* Lightshow Studio — "Studio graphite" theme.
+/* Lightshow Studio — "Studio graphite" theme (Dark, the default), plus the
+   Blackout, Light and Custom themes further down (ui/theme.js switches them).
    Neutral greys with one blue accent; colour is reserved for show content
    (beams, lasers, cue clips, keyframes) so the UI never competes with the show.
+   Every UI colour is a token here, so a theme only has to swap tokens; the 3D
+   view and laser previews stay dark in every theme.
    Layout: top bar / [library | 3D view | inspector] / bottom area, sized by
    CSS variables the Shell sets (panel widths, bottom height). */
 
@@ -28,6 +31,32 @@
   --warn: #e0a43a;
   --warn-soft: rgba(224, 164, 58, 0.14);
   --ok: #3fb950;
+  --on-accent: #fff;  /* text on accent / danger fills */
+  --line-3: #3a414e;  /* hovered borders, scrollbar */
+  --knob: #dfe4ec;    /* slider thumb */
+  --knob-off: #c9d0db; /* switch knob when off */
+  --glass: rgba(20, 23, 28, 0.88);  /* panels floating over the 3D view */
+  --scrim: rgba(5, 6, 8, 0.5);      /* behind dialogs */
+  --scrim-hi: rgba(5, 6, 8, 0.72);  /* behind the welcome screen, tour */
+  --shade: rgba(0, 0, 0, 0.35);     /* small shadows */
+
+  /* timeline */
+  --tl-track: #101317;  /* track rows */
+  --tl-head: #12161b;   /* curve-lane headers */
+  --tl-head-cur: #121a17;
+  --tl-ruler: #111418;
+  --tl-wave: #0d0f12;
+  --tl-lane: #0b0d10;   /* curve lanes */
+  --tl-lane-cur: #0e1512;
+  --tl-bar: rgba(120, 150, 200, 0.30);  /* grid: bar lines */
+  --tl-beat: rgba(90, 110, 150, 0.12);  /* grid: beat lines */
+  --tl-tick: rgba(140, 160, 200, 0.45);
+  --tl-num: #7d8592;
+  --tl-waveline: #3c5f94;
+  --tl-hint: #4f5763;
+  --tl-mute: #6b5422;  --tl-mute-line: #a57f2c;  --tl-mute-text: #ffd98a;
+  --tl-solo: #1f4f8f;  --tl-solo-text: #d6e6ff;
+  --tl-clip-text: #eef3fb;  --tl-clip-sel: #e6f0ff;  /* cue clips: label, selected border */
 
   /* show-content colours */
   --c-laser: #23a876;
@@ -55,6 +84,142 @@
   --bottom-h: 240px;
 }
 
+/* Blackout: near-black and dim, for dark rooms where a bright screen glares. */
+:root[data-theme="blackout"] {
+  --bg-0: #000000;
+  --bg-1: #050506;
+  --bg-2: #0b0c0e;
+  --bg-3: #121418;
+  --bg-4: #1a1d22;
+  --line: #0f1114;
+  --line-2: #1b1e23;
+  --line-3: #2a2f37;
+  --text-1: #b9bec7;
+  --text-2: #80868f;
+  --text-3: #4f545c;
+  --accent: #2c6bd0;
+  --accent-hi: #4f88e0;
+  --accent-soft: rgba(44, 107, 208, 0.16);
+  --accent-line: rgba(44, 107, 208, 0.5);
+  --on-accent: #e6ebf3;
+  --knob: #9aa1ab;
+  --knob-off: #6f7680;
+  --glass: rgba(4, 4, 5, 0.9);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --scrim-hi: rgba(0, 0, 0, 0.8);
+  --tl-track: #040405;
+  --tl-head: #060708;
+  --tl-head-cur: #050906;
+  --tl-ruler: #050506;
+  --tl-wave: #020203;
+  --tl-lane: #020203;
+  --tl-lane-cur: #040705;
+  --tl-bar: rgba(110, 130, 170, 0.20);
+  --tl-beat: rgba(90, 110, 150, 0.08);
+  --tl-tick: rgba(120, 140, 180, 0.35);
+  --tl-num: #5a6069;
+  --tl-waveline: #2c4670;
+  --tl-hint: #3a3f47;
+}
+
+/* Light: light panels for bright rooms. The 3D view stays dark. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-0: #e4e7ec;
+  --bg-1: #f5f6f8;
+  --bg-2: #ffffff;
+  --bg-3: #e9ecf0;
+  --bg-4: #dce1e8;
+  --line: #d9dde3;
+  --line-2: #c3c9d2;
+  --line-3: #a6aeba;
+  --text-1: #1b1f26;
+  --text-2: #4a5260;
+  --text-3: #7a8291;
+  --accent: #2f6fe0;
+  --accent-hi: #1c58c2;
+  --accent-soft: rgba(47, 111, 224, 0.12);
+  --accent-line: rgba(47, 111, 224, 0.5);
+  --danger: #d1362e;
+  --danger-hi: #b3261e;
+  --danger-soft: rgba(209, 54, 46, 0.1);
+  --warn: #b97800;
+  --warn-soft: rgba(185, 120, 0, 0.12);
+  --ok: #1f8f3a;
+  --knob: #ffffff;
+  --knob-off: #ffffff;
+  --glass: rgba(245, 246, 248, 0.92);
+  --scrim: rgba(20, 24, 30, 0.35);
+  --scrim-hi: rgba(20, 24, 30, 0.55);
+  --shade: rgba(20, 30, 50, 0.18);
+  --shadow: 0 10px 30px rgba(20, 30, 50, 0.18), 0 2px 8px rgba(20, 30, 50, 0.12);
+  --c-laser-hi: #12996a;
+  --c-fixture-hi: #2f63c4;
+  --c-play: #e0335a;
+  --c-key: #d98a1c;
+  --tl-track: #eef0f3;
+  --tl-head: #e6e9ee;
+  --tl-head-cur: #e0efe8;
+  --tl-ruler: #f5f6f8;
+  --tl-wave: #fbfcfd;
+  --tl-lane: #f7f8fa;
+  --tl-lane-cur: #eef7f2;
+  --tl-bar: rgba(60, 80, 120, 0.30);
+  --tl-beat: rgba(60, 80, 120, 0.10);
+  --tl-tick: rgba(60, 80, 120, 0.45);
+  --tl-num: #6a7280;
+  --tl-waveline: #6f93cc;
+  --tl-hint: #8a919d;
+  --tl-mute: #f3dfae;  --tl-mute-line: #c99a3a;  --tl-mute-text: #6b4a00;
+  --tl-solo: #cfe0ff;  --tl-solo-text: #153c7a;
+  --tl-clip-text: #0f1720;  --tl-clip-sel: #1b1f26;
+}
+
+/* Custom: theme.js sets the picked colours (--bg-0/1/2, --line-2, --text-1,
+   --accent, --tl-track, --c-play/-laser/-fixture/-key, --warn, --danger, --ok)
+   inline on <html>; every other shade is mixed from them here. */
+:root[data-theme="custom"] {
+  --bg-3: color-mix(in srgb, var(--bg-2), var(--text-1) 8%);
+  --bg-4: color-mix(in srgb, var(--bg-2), var(--text-1) 15%);
+  --line: color-mix(in srgb, var(--line-2), var(--bg-1) 45%);
+  --line-3: color-mix(in srgb, var(--line-2), var(--text-1) 22%);
+  --text-2: color-mix(in srgb, var(--text-1) 70%, var(--bg-1));
+  --text-3: color-mix(in srgb, var(--text-1) 45%, var(--bg-1));
+  --accent-hi: color-mix(in srgb, var(--accent), var(--text-1) 25%);
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 55%, transparent);
+  --danger-hi: color-mix(in srgb, var(--danger), var(--text-1) 30%);
+  --danger-soft: color-mix(in srgb, var(--danger) 14%, transparent);
+  --warn-soft: color-mix(in srgb, var(--warn) 14%, transparent);
+  --knob: color-mix(in srgb, var(--text-1) 85%, var(--bg-2));
+  --knob-off: color-mix(in srgb, var(--text-1) 70%, var(--bg-2));
+  --glass: color-mix(in srgb, var(--bg-1) 90%, transparent);
+  --c-laser-hi: color-mix(in srgb, var(--c-laser), var(--text-1) 35%);
+  --c-fixture-hi: color-mix(in srgb, var(--c-fixture), var(--text-1) 35%);
+  --tl-head: color-mix(in srgb, var(--tl-track), var(--text-1) 3%);
+  --tl-head-cur: color-mix(in srgb, var(--tl-track), var(--c-laser) 8%);
+  --tl-ruler: color-mix(in srgb, var(--tl-track), var(--bg-1) 50%);
+  --tl-wave: color-mix(in srgb, var(--tl-track), var(--bg-0) 50%);
+  --tl-lane: color-mix(in srgb, var(--tl-track), var(--bg-0) 60%);
+  --tl-lane-cur: color-mix(in srgb, var(--tl-lane), var(--c-laser) 6%);
+  --tl-bar: color-mix(in srgb, var(--text-1) 22%, transparent);
+  --tl-beat: color-mix(in srgb, var(--text-1) 8%, transparent);
+  --tl-tick: color-mix(in srgb, var(--text-1) 35%, transparent);
+  --tl-num: var(--text-3);
+  --tl-waveline: color-mix(in srgb, var(--accent) 65%, var(--tl-track));
+  --tl-hint: var(--text-3);
+  --tl-solo: color-mix(in srgb, var(--accent) 45%, var(--bg-2));
+  --tl-solo-text: var(--text-1);
+}
+:root[data-theme="custom"][data-tone="light"] {
+  --scrim: rgba(20, 24, 30, 0.35);
+  --scrim-hi: rgba(20, 24, 30, 0.55);
+  --shade: rgba(20, 30, 50, 0.18);
+  --shadow: 0 10px 30px rgba(20, 30, 50, 0.18), 0 2px 8px rgba(20, 30, 50, 0.12);
+  --tl-mute: #f3dfae;  --tl-mute-line: #c99a3a;  --tl-mute-text: #6b4a00;
+  --tl-clip-text: #0f1720;  --tl-clip-sel: #1b1f26;
+}
+
 * { box-sizing: border-box; }
 
 html, body { height: 100%; margin: 0; }
@@ -76,7 +241,7 @@ button, input, select { font: inherit; color: inherit; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background-color: #3a414e; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--line-3); }
 ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
 
 /* Simple vs Pro, and which workspace a piece of UI belongs to. */
@@ -123,7 +288,7 @@ kbd {
 }
 .btn:hover { background: var(--bg-3); }
 .btn:active { background: var(--bg-4); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn.primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
 .btn.ghost:hover { background: var(--bg-3); color: var(--text-1); }
@@ -171,11 +336,11 @@ input[type="range"]::-webkit-slider-thumb {
   height: 14px;
   margin-top: -5px;
   border-radius: 50%;
-  background: #dfe4ec;
+  background: var(--knob);
   border: 2px solid var(--bg-1);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 1px var(--shade);
 }
-input[type="range"]:hover::-webkit-slider-thumb { background: #fff; }
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--text-1); }
 input[type="range"]:focus-visible { outline: none; }
 input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-line); }
 
@@ -214,11 +379,11 @@ input.switch::after {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #c9d0db;
+  background: var(--knob-off);
   transition: transform 0.15s;
 }
 input.switch:checked { background: var(--accent); }
-input.switch:checked::after { transform: translateX(12px); background: #fff; }
+input.switch:checked::after { transform: translateX(12px); background: var(--on-accent); }
 
 /* segmented control */
 .seg {
@@ -284,7 +449,7 @@ input.switch:checked::after { transform: translateX(12px); background: #fff; }
   align-items: center;
   justify-content: center;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
 }
 .tb-play:hover { background: var(--accent-hi); }
@@ -346,7 +511,7 @@ input.switch:checked::after { transform: translateX(12px); background: #fff; }
   cursor: pointer;
   white-space: nowrap;
 }
-.tb-search:hover { color: var(--text-2); border-color: #3a414e; }
+.tb-search:hover { color: var(--text-2); border-color: var(--line-3); }
 @media (max-width: 1420px) { .tb-search .lbl, .tb-output .ip { display: none; } }
 @media (max-width: 1240px) { .tb-search kbd, .tb-dirty { display: none; } .tb-project { max-width: 130px; } }
 
@@ -663,10 +828,10 @@ details.more > .more-body { padding: 2px 0 4px; }
   background: transparent; color: var(--text-3); font-size: 10px; font-weight: 700; cursor: pointer;
 }
 .trk-btn:hover { color: var(--text-1); }
-.trk-btn[aria-pressed="true"] { background: #6b5422; border-color: #a57f2c; color: #ffd98a; }
-.trk-btn.solo[aria-pressed="true"] { background: #1f4f8f; border-color: var(--accent); color: #d6e6ff; }
+.trk-btn[aria-pressed="true"] { background: var(--tl-mute); border-color: var(--tl-mute-line); color: var(--tl-mute-text); }
+.trk-btn.solo[aria-pressed="true"] { background: var(--tl-solo); border-color: var(--accent); color: var(--tl-solo-text); }
 .trk.muted .trk-body { opacity: 0.4; }
-.trk-body { position: relative; min-width: 0; overflow: hidden; background: #101317; }
+.trk-body { position: relative; min-width: 0; overflow: hidden; background: var(--tl-track); }
 .trk-add {
   display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px;
   color: var(--text-3); font-size: 11.5px; border-bottom: 1px dashed transparent;
@@ -676,11 +841,11 @@ details.more > .more-body { padding: 2px 0 4px; }
 .crv { display: grid; grid-template-columns: var(--tl-hdr) minmax(0, 1fr); height: 54px; border-bottom: 1px solid var(--line); }
 .crv-head {
   display: flex; align-items: center; gap: 6px; padding: 0 8px 0 28px; min-width: 0;
-  border-right: 1px solid var(--line); background: #12161b; color: var(--text-3); font-size: 11.5px; cursor: pointer;
+  border-right: 1px solid var(--line); background: var(--tl-head); color: var(--text-3); font-size: 11.5px; cursor: pointer;
 }
 .crv-head .ico { width: 10px; height: 10px; color: var(--c-key); }
 .crv-head:hover { color: var(--text-1); }
-.crv.cur .crv-head { color: var(--c-laser-hi); background: #121a17; }
+.crv.cur .crv-head { color: var(--c-laser-hi); background: var(--tl-head-cur); }
 .crv-body { position: relative; min-width: 0; }
 .crv-body canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; outline: none; }
 .crv-body canvas:focus { box-shadow: inset 0 0 0 1px var(--accent-line); }
@@ -689,13 +854,13 @@ details.more > .more-body { padding: 2px 0 4px; }
 .tl-cue {
   position: absolute; top: 4px; height: 23px;
   display: flex; align-items: center; overflow: hidden;
-  border-radius: 4px; border: 1px solid rgba(122, 165, 242, 0.55); background: rgba(56, 102, 184, 0.55);
+  border-radius: 4px; border: 1px solid color-mix(in srgb, var(--c-fixture-hi) 55%, transparent); background: color-mix(in srgb, var(--c-fixture) 55%, transparent);
   cursor: grab;
 }
-.tl-cue.sel { background: rgba(70, 125, 225, 0.85); border-color: #cfe0ff; }
-.tl-cue-laser { background: rgba(35, 168, 118, 0.45); border-color: rgba(95, 224, 172, 0.6); }
-.tl-cue-laser.sel { background: rgba(35, 168, 118, 0.8); border-color: #c8ffe6; }
-.tl-cue-label { padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #eef3fb; font-size: 11.5px; pointer-events: none; }
+.tl-cue.sel { background: color-mix(in srgb, var(--c-fixture), var(--c-fixture-hi) 25%); border-color: var(--tl-clip-sel); }
+.tl-cue-laser { background: color-mix(in srgb, var(--c-laser) 45%, transparent); border-color: color-mix(in srgb, var(--c-laser-hi) 60%, transparent); }
+.tl-cue-laser.sel { background: color-mix(in srgb, var(--c-laser) 80%, transparent); border-color: var(--tl-clip-sel); }
+.tl-cue-label { padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tl-clip-text); font-size: 11.5px; pointer-events: none; }
 .tl-cue-grip { position: absolute; right: 0; top: 0; bottom: 0; width: 7px; cursor: ew-resize; background: rgba(255, 255, 255, 0.16); }
 .tl-kf { position: absolute; bottom: 2px; width: 5px; height: 5px; margin-left: -2.5px; background: var(--c-key); transform: rotate(45deg); pointer-events: none; }
 
@@ -749,8 +914,8 @@ details.more > .more-body { padding: 2px 0 4px; }
   padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--line-2);
-  background: rgba(20, 23, 28, 0.88);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: var(--glass);
+  box-shadow: 0 4px 16px var(--shade);
 }
 .vo-tl { top: 10px; left: 10px; }
 .vo-tr { top: 10px; right: 10px; }
@@ -764,7 +929,7 @@ details.more > .more-body { padding: 2px 0 4px; }
 .vo-hint {
   padding: 5px 9px;
   border-radius: 8px;
-  background: rgba(13, 15, 18, 0.7);
+  background: var(--glass);
   color: var(--text-3);
   font-size: 11.5px;
   transition: opacity 0.6s;
@@ -781,7 +946,7 @@ details.more > .more-body { padding: 2px 0 4px; }
   padding: 14px 18px;
   border-radius: var(--r-lg);
   border: 1px dashed var(--line-2);
-  background: rgba(20, 23, 28, 0.82);
+  background: var(--glass);
   color: var(--text-2);
   text-align: center;
   font-size: 12.5px;
@@ -826,7 +991,7 @@ details.more > .more-body { padding: 2px 0 4px; }
 
 /* ---------------------------------------------------- command palette */
 
-.cmdk-back { position: fixed; inset: 0; z-index: 1000; background: rgba(5, 6, 8, 0.5); }
+.cmdk-back { position: fixed; inset: 0; z-index: 1000; background: var(--scrim); }
 .cmdk {
   position: fixed;
   z-index: 1001;
@@ -986,7 +1151,7 @@ details.more > .more-body { padding: 2px 0 4px; }
 .lv-fader input[type="range"]::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -7px; }
 .lv-blackout, .lv-big { width: 100%; height: 44px; margin-top: 8px; font-size: 13.5px; }
 .lv-blackout { border-color: rgba(229, 83, 75, 0.5); color: var(--danger-hi); }
-.lv-blackout.on { background: var(--danger); border-color: var(--danger); color: #fff; animation: lv-blink 1s steps(2) infinite; }
+.lv-blackout.on { background: var(--danger); border-color: var(--danger); color: var(--on-accent); animation: lv-blink 1s steps(2) infinite; }
 .lv-blackout kbd, .lv-big kbd { margin-left: auto; }
 .lv-bar { display: flex; align-items: center; gap: 24px; height: 100%; padding: 0 20px; }
 .lv-transport { display: flex; align-items: center; gap: 6px; }
@@ -1002,14 +1167,14 @@ details.more > .more-body { padding: 2px 0 4px; }
 .lv-prog { position: relative; height: 22px; border-radius: 6px; background: var(--bg-2); border: 1px solid var(--line-2); cursor: pointer; overflow: hidden; }
 .lv-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft); border-right: 2px solid var(--c-play); }
 .lv-tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--warn); opacity: 0.8; }
-body.blackout #center::after { content: 'BLACKOUT'; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 4px 12px; border-radius: 6px; background: var(--danger); color: #fff; font-weight: 700; font-size: 12px; letter-spacing: 0.1em; pointer-events: none; }
+body.blackout #center::after { content: 'BLACKOUT'; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 4px 12px; border-radius: 6px; background: var(--danger); color: var(--on-accent); font-weight: 700; font-size: 12px; letter-spacing: 0.1em; pointer-events: none; }
 
 /* ------------------------------------------------ welcome screen & tour */
 
 .wl-back {
   position: fixed; inset: 0; z-index: 1100;
   display: flex; align-items: center; justify-content: center; padding: 24px;
-  background: rgba(5, 6, 8, 0.72);
+  background: var(--scrim-hi);
 }
 .wl-back[hidden] { display: none; }
 .wl {
@@ -1052,7 +1217,7 @@ body.blackout #center::after { content: 'BLACKOUT'; position: absolute; top: 12p
 .tour-spot {
   position: fixed; z-index: 1051; pointer-events: none;
   border-radius: 10px; border: 2px solid var(--accent);
-  box-shadow: 0 0 0 9999px rgba(5, 6, 8, 0.62);
+  box-shadow: 0 0 0 9999px var(--scrim-hi);
   transition: left 0.2s, top 0.2s, width 0.2s, height 0.2s;
 }
 .tour-block[hidden], .tour-spot[hidden], .tour-card[hidden] { display: none; }
@@ -1080,7 +1245,7 @@ body.blackout #center::after { content: 'BLACKOUT'; position: absolute; top: 12p
   position: absolute; top: 10px; left: calc(var(--tl-hdr) + 24px); z-index: 2;
   max-width: 440px; padding: 12px 16px;
   border: 1px dashed var(--line-2); border-radius: var(--r-lg);
-  background: rgba(20, 23, 28, 0.9);
+  background: var(--glass);
   color: var(--text-2); font-size: 12.5px; pointer-events: none;
 }
 .tl-empty .btn { pointer-events: auto; }
@@ -1247,3 +1412,73 @@ details.pat-group > .pat-grid { margin: 2px 0 6px; }
 @media (max-width: 720px) { .gr-side { width: 190px; } .gr-doc { padding: 16px 18px 40px; } }
 .help-guide { display: flex; width: 100%; justify-content: center; margin-top: 12px; }
 .help-guide kbd { margin-left: 6px; }
+
+/* Settings (ui/SettingsDialog.js) */
+.st { width: min(560px, calc(100vw - 32px)); top: 8vh; max-height: 84vh; }
+.st-sec + .st-sec { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.st-sec h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.st-themes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+.st-theme {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px;
+  border: 1px solid var(--line-2); border-radius: var(--r); background: var(--bg-2);
+  color: var(--text-2); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.st-theme:hover { border-color: var(--line-3); color: var(--text-1); }
+.st-theme[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--text-1); font-weight: 600; }
+.st-name { text-align: center; }
+/* a tiny window: top bar, side panel, the 3D view (always dark) with a beam */
+.st-prev {
+  position: relative; display: block; height: 54px; border-radius: 5px; overflow: hidden;
+  background: var(--p0); border: 1px solid var(--pl);
+}
+.st-prev i { position: absolute; display: block; }
+.st-prev i:nth-child(1) { left: 0; right: 0; top: 0; height: 11px; background: var(--p1); border-bottom: 1px solid var(--pl); }
+.st-prev i:nth-child(2) { left: 0; top: 11px; bottom: 0; width: 22%; background: var(--p1); border-right: 1px solid var(--pl); }
+.st-prev i:nth-child(3) { left: 22%; right: 0; top: 11px; bottom: 0; background: #000; }
+.st-prev i:nth-child(3)::after { content: ''; position: absolute; left: 20%; bottom: 20%; width: 60%; height: 2px; background: var(--c-laser-hi); transform: rotate(-18deg); transform-origin: left; box-shadow: 0 0 4px var(--c-laser-hi); }
+.st-prev b { position: absolute; right: 5px; top: 3px; width: 14px; height: 5px; border-radius: 3px; background: var(--pa); }
+.st-prev i:nth-child(2)::before, .st-prev i:nth-child(2)::after { content: ''; position: absolute; left: 3px; right: 3px; height: 3px; border-radius: 2px; background: var(--pt); opacity: 0.6; }
+.st-prev i:nth-child(2)::before { top: 5px; }
+.st-prev i:nth-child(2)::after { top: 11px; right: 7px; }
+.st-prev[data-t="dark"] { --p0: #0d0f12; --p1: #14171b; --pl: #2f3540; --pt: #a3abb8; --pa: #3d8bfd; }
+.st-prev[data-t="blackout"] { --p0: #000; --p1: #050506; --pl: #1b1e23; --pt: #80868f; --pa: #2c6bd0; }
+.st-prev[data-t="light"] { --p0: #e4e7ec; --p1: #f5f6f8; --pl: #c3c9d2; --pt: #4a5260; --pa: #2f6fe0; }
+.st-prev[data-t="custom"] {
+  --p0: conic-gradient(from 200deg, #e5534b, #e0a43a, #3fb950, #3d8bfd, #d55fd0, #e5534b);
+  --p1: color-mix(in srgb, var(--bg-1) 70%, transparent); --pl: var(--line-2); --pt: var(--text-2); --pa: var(--accent);
+}
+:root[data-theme="custom"] .st-prev[data-t="custom"] { --p0: var(--bg-0); --p1: var(--bg-1); }
+.st-custom { margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-0); }
+.st-picks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 14px; }
+.st-pick { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); cursor: pointer; min-width: 0; }
+.st-pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-pick input[type="color"] { flex: none; width: 34px; height: 22px; padding: 0 2px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--bg-2); cursor: pointer; }
+.st-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.st-row > .muted { margin-right: 4px; }
+.st-line { display: flex; align-items: center; gap: 10px; min-height: var(--h); font-size: 13px; color: var(--text-1); }
+.st-line + .st-line { margin-top: 6px; }
+.st-line .grow { flex: 1; }
+label.st-line { cursor: pointer; }
+.st-status { margin: 4px 0 8px; }
+@media (max-width: 560px) { .st-themes { grid-template-columns: repeat(2, 1fr); } .st-picks { grid-template-columns: 1fr; } }
+
+/* "Update available" (ui/Updates.js) */
+.up { width: min(560px, calc(100vw - 32px)); }
+.up .ad-head > .ico { color: var(--accent-hi); }
+.up-notes {
+  max-height: 38vh; overflow: auto; margin: 4px 0 10px; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-0);
+  font-size: 12.5px; line-height: 1.5; color: var(--text-2);
+}
+.up-notes > :first-child { margin-top: 0; }
+.up-notes > :last-child { margin-bottom: 0; }
+.up-notes h1, .up-notes h2, .up-notes h3 { font-size: 13px; color: var(--text-1); margin: 12px 0 6px; }
+.up-notes ul { margin: 0 0 8px; padding-left: 18px; }
+.up-notes li { margin: 3px 0; }
+.up-notes strong { color: var(--text-1); }
+.up-notes code { font-family: var(--mono); font-size: 11.5px; padding: 0 4px; border-radius: 3px; background: var(--bg-3); }
+.up-notes a { color: var(--accent-hi); }
+.up-bar { height: 8px; margin: 10px 0 6px; border-radius: 4px; background: var(--bg-3); overflow: hidden; }
+.up-bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width 0.15s; }
+.up .tip { margin: 8px 0; }
+.ad-p.muted { color: var(--text-3); }

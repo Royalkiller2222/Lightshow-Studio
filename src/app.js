@@ -9,6 +9,8 @@
 //   bottom  ─ Build: patch sheet · Program: timeline
 //   first run ─ welcome screen (demo / empty venue / open + Simple or Pro) and
 //               an optional 5-step tour; both reopen from Help and Ctrl+K
+//   settings ─ the gear (Ctrl+,): theme, start-up, Simple/Pro, updates; the
+//              weekly update check pops up when a new version is out
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -61,6 +63,18 @@ import { Tour } from './ui/Tour.js';
 import { GuideReader } from './ui/GuideReader.js';
 import { toast } from './ui/overlays.js';
 import { isTypingTarget, prefs } from './ui/dom.js';
+import { applyTheme, onThemeChange, tc } from './ui/theme.js';
+import { SettingsDialog } from './ui/SettingsDialog.js';
+import { Updates } from './ui/Updates.js';
+
+// The theme goes on first, so nothing is drawn in the wrong colours. The
+// window's own background follows it (seen while resizing).
+const syncWindowBackground = () => {
+  const [r, g, b] = (tc('--bg-0').match(/[d.]+/g) || []).map(Number);
+  window.appBridge?.setBackground('#' + [r, g, b].map((n) => Math.round(n || 0).toString(16).padStart(2, '0')).join(''));
+};
+onThemeChange(syncWindowBackground);
+applyTheme();
 
 // ---------- Renderer / scene ----------
 const canvas = document.getElementById('view');
@@ -296,12 +310,15 @@ const topBar = new TopBar(document.getElementById('topbar'), {
     welcome: () => openWelcome(),
     tour: () => tour.start(),
     guide: () => guide.open(),
+    settings: () => settings.open(),
   },
   output: { get: () => output, set: setOutput },
 });
 
 const palette = new CommandPalette(commands);
 const guide = new GuideReader(); // the user guide (guide/*.md): Help, F1, Ctrl+K
+const updates = new Updates({ shell, transport, isDirty: () => history.dirty, save: () => saveProject() });
+const settings = new SettingsDialog({ shell, updates, resetLayout: () => shell.resetLayout() });
 
 const live = new LivePanel({
   sections: document.getElementById('live-sections'),
@@ -904,6 +921,9 @@ function commands() {
   add('Help', 'Keyboard shortcuts', () => topBar.openHelp(), '?');
   add('Help', 'Take the tour', () => tour.start());
   add('Help', 'Show the welcome screen', () => openWelcome());
+  add('App', 'Settings…', () => settings.open(), 'Ctrl+,');
+  add('App', 'Theme and colours…', () => settings.open());
+  add('App', 'Check for updates', () => updates.check(), '', () => updates.available);
   add('File', 'New show (empty venue)', () => startShow('empty'));
   add('File', 'Load the demo show', () => startShow('demo'));
   return list;
@@ -912,7 +932,7 @@ function commands() {
 // ---------- Keyboard shortcuts ----------
 window.addEventListener('keydown', (e) => {
   if (e.key === 'F1') { e.preventDefault(); if (!guide.isOpen) guide.open(); return; }
-  if (palette.isOpen || welcome.isOpen || tour.isOpen || autoDialog.isOpen || guide.isOpen) return; // they handle their own keys
+  if (palette.isOpen || welcome.isOpen || tour.isOpen || autoDialog.isOpen || guide.isOpen || settings.isOpen || updates.isOpen) return; // they handle their own keys
   const typing = isTypingTarget(e.target);
   const ctrl = e.ctrlKey || e.metaKey;
   const k = e.key.toLowerCase();
@@ -920,6 +940,7 @@ window.addEventListener('keydown', (e) => {
   if (ctrl && k === 's') { e.preventDefault(); saveProject(); return; }
   if (ctrl && k === 'o') { e.preventDefault(); openProject(); return; }
   if (ctrl && k === 'k') { e.preventDefault(); palette.open(); return; }
+  if (ctrl && e.key === ',') { e.preventDefault(); settings.open(); return; }
   if (typing) return; // let text fields keep their keys (incl. native text undo)
 
   if (ctrl && k === 'z' && !e.shiftKey) { e.preventDefault(); history.undo(); return; }
@@ -1009,7 +1030,15 @@ function openWelcome() {
 if (!prefs.get('welcomed', false)) {
   welcomeFirstRun = true;
   welcome.open({ firstRun: true });
+} else if (prefs.get('startup.welcome', false)) {
+  // (Settings → "Show the welcome screen every time"): the demo is what's
+  // loaded, so picking a show replaces it without an undo step
+  welcomeFirstRun = true;
+  welcome.open({ firstRun: false });
 }
+
+// Once a week (Settings → Updates), a few seconds after start-up.
+updates.startWeekly();
 
 // ---------- Main loop ----------
 const clock = new THREE.Clock();
