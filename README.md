@@ -41,7 +41,8 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
   land as a mirrored pair across the centre line by default). Click a fixture
   to edit its name, position, facing and DMX address in the inspector on the
   right. The patch sheet along the bottom lists everything.
-- **Program workspace** — load a song (its tempo is detected), then drag laser
+- **Program workspace** — load a song (its tempo and first downbeat are
+  detected; **÷2 / ×2** fix a half- or double-time grid), then drag laser
   patterns and fixture effects from the library onto the timeline's named
   tracks (or below them to start a new track). Click a cue to edit it on the
   right. Laser cues have BEYOND-style Key Effects — size, rotation, position,
@@ -57,11 +58,14 @@ spinning, breathing tunnel; with no song loaded the 16-second demo loops.
   1–9, ← / →, optionally jumping on the next beat or bar), brightness / speed /
   size masters, **B** for blackout, hold for sparks and **F** for fullscreen.
   **Auto** (A) lets the music drive the lasers live, from the song or a
-  microphone / line-in.
+  microphone / line-in, gliding with the sound's sweeps and changing one
+  side's lasers for a sound on that side.
 - **Auto show** — reads the whole song (intro, builds, drops, breaks, repeats
   and the mood of each part) and writes an editable laser show onto the
   timeline, with section markers: looks change on phrases, builds rise into
-  a dark beat, drops hit big, and the biggest drop gets the best. Pick an
+  a dark beat, drops hit big, and the biggest drop gets the best. The
+  pictures glide up and down with filter sweeps, and a sound that plays on
+  one side changes only the lasers on that side. Pick an
   overall mood (Euphoric, Dark, Dreamy, Aggressive) or let the music decide,
   and click any section to change its type or mood before generating.
 - **Import a rig (MVR)** — bring in a plot from grandMA3, Vectorworks, Capture

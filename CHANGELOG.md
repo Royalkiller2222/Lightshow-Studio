@@ -3,6 +3,70 @@
 Each `## vX.Y.Z` section below becomes the notes of that version's GitHub
 Release (see `.github/workflows/release.yml`). Newest first.
 
+## v0.17.0 — 2026-11-16
+
+**Auto follows sweeps and stereo**, and the tempo detection is rebuilt. Tuned
+on a real track: the lasers glide up and down with the sound's filter
+sweeps, and a sound that plays on one side changes only that side's lasers.
+
+**Install:** download `LightshowStudio-Setup-0.17.0.exe` below and run it. It
+updates an existing install. Windows may say "Windows protected your PC" (the
+installer isn't code-signed yet); click **More info → Run anyway**.
+
+### The lasers follow sweeps
+- When the sound sweeps brighter (a filter opening, a riser), every picture
+  glides **up**. When it sweeps duller (a note sliding away, a filter
+  closing), the pictures glide **down**. They settle back to the middle when
+  the sweep is over.
+- **Pregenerate** writes this as a **Position Y** curve on each cue, which
+  you can reshape or delete like any other curve.
+- **Live Auto** does the same from what it hears, for the song and for a
+  sound input.
+- How far the pictures travel follows **Intensity**. The **Follow sweeps**
+  switch turns it off.
+
+### A sound on one side changes only that side
+- When a sound plays mostly on the left or the right, only the lasers on
+  that side change: a short, brighter accent, then their look comes back when
+  the sound returns to the middle. The other side carries on untouched.
+- **Pairs** now splits the projectors by where they stand. Pregenerate
+  writes **Auto Left** and **Auto Right** tracks (they were Auto A and B, odd
+  and even). Left and right are the audience's; the song's left channel is
+  the audience's left.
+- With one projector, or with Pairs off, the picture **leans** towards the
+  sound instead (a **Position X** curve).
+- **Live Auto** follows sides for the loaded song. A microphone or line-in
+  is followed for sweeps only.
+- The **Follow sides** switch turns it off. It needs a stereo song.
+
+### See what Auto heard
+- The Pregenerate chart has a strip under the bars: a **line** for the
+  sweeps (up = brighter) and **ticks** for sounds on one side (upper = left,
+  lower = right). The summary counts both.
+- The message after generating says how many sweeps and one-sided sounds
+  the show follows.
+
+### Tempo
+- **A new tempo detector.** It listens for drum hits in many frequency
+  bands, so a wobbling synth or tremolo no longer passes for a drum roll,
+  and it pins the tempo to two decimals. It also finds the **first
+  downbeat**, so bar 1 starts where the music does.
+- **÷2 and ×2** next to the BPM, for songs the grid counts twice as fast or
+  slow as you do (82 against 164). When a song could go either way, the
+  "Loaded" message points at the button.
+- The BPM box keeps decimals (127.95).
+- Loading a song says "Listening to…" while it works.
+- The show inspector's "First beat at" is now **Bar 1 starts at**.
+- A tempo you set by hand is saved with the show and kept when you load the
+  same song again.
+
+### Also
+- With **Change** on "With the music", a look's length follows the song's
+  pace: a slow song gets fewer bars per look.
+- Two drops that follow each other and sound different are now separate
+  sections (Drop 2, Drop 3), each with its own look.
+- The user guide covers all of the above (F1).
+
 ## v0.16.0 — 2026-11-16
 
 **A user guide**, in the app and on GitHub. Thirteen pages with

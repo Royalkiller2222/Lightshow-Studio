@@ -7,7 +7,8 @@ export class Transport {
   constructor(audio = null) {
     this.audio = audio;
     this.bpm = 126;
-    this.beatOffset = 0; // seconds to the first downbeat (from BPM detection)
+    this.beatOffset = 0; // seconds to the first downbeat = where bar 1 starts (from the song analysis)
+    this.byHand = false; // the user set the tempo / bar 1 (so loading the same song again keeps it)
     this.playing = true; // free-run on launch so the demo is alive immediately
     this._freeTime = 0;
     this.loopEnd = 0;    // with no track, free-run wraps here (the show's end) so it never runs dark

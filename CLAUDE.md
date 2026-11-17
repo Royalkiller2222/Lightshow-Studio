@@ -71,7 +71,8 @@ Show engine (timeline cues)            External console
   `show/looks.js` — and **`laser`** (BEYOND-style vector pattern
   + 7 "Key Effect" parameters, each optionally keyframed).
 - **Timeline (`src/timeline/`, `src/audio/`)** — audio clock (`Transport`),
-  Web-Audio decode + FFT bands + auto-BPM, `TimelinePanel` (DAW-style: bar
+  Web-Audio decode + FFT bands + left/right lean + auto-BPM (`bpm.js`, with
+  our FFT in `fft.js`), `TimelinePanel` (DAW-style: bar
   ruler + markers, waveform, **named tracks** with mute/solo, clips, keyframe
   curve lanes under laser tracks, zoom/scroll) and `CueInspector` (edits the
   selected cue). Cues belong to tracks; `engine.syncTracks()` derives each
@@ -83,8 +84,10 @@ Show engine (timeline cues)            External console
   fixture owns one, plus a default one when the rig has none).
 - **`src/auto/`** — Auto (Stage 3c, content-aware since 5a): `analyze.js`
   (own FFT features → bars with tension, drops, sections, repeats, moods,
-  fills; `applySongMap` for the user's section edits) and `director.js` (settings, `generateShow` for Pregenerate,
-  `LiveDirector` for live Auto). Pure, Node-testable.
+  fills, sweeps, one-sided sounds; `applySongMap` for the user's section
+  edits) and `director.js` (settings, `generateShow` for Pregenerate,
+  `LiveDirector` for live Auto; both follow sweeps with Position Y and
+  one-sided sounds per stage side). Pure, Node-testable.
 - **`src/import/`** — file imports: `zip.js` + `xml.js` (our own readers, no
   dependency), `rig.js` (shared: type guess, placement, addressing),
   `mvr.js` (MVR rig), `qlc.js` (QLC+ rig + shows → cues) and `xlights.js`
@@ -117,8 +120,10 @@ Two tracks, both user-approved:
    **3c Auto — live + pregenerated ✔ (v0.10.0)**. Imports: **4a MVR rig ✔ (v0.11.0)**,
    **4b QLC+ `.qxw` ✔ (v0.12.0)**, **4c xLights `.xsq` ✔ (v0.13.0)**. Then **content-aware Auto**:
    **5a smarter listening + director ✔ (v0.14.0)**, **5b song map in the
-   Pregenerate dialog ✔ (v0.15.0)**, then the **user guide ✔ (v0.16.0)**; next: tune
-   Auto on the user's songs. Shows are
+   Pregenerate dialog ✔ (v0.15.0)**, then the **user guide ✔ (v0.16.0)**, then
+   **tuning on the user's songs ✔ (v0.17.0: new tempo detector, sweeps,
+   one-sided sounds)**; next: more songs as the user adds them (they live in
+   `../songs/`, outside the repo — never commit audio). Shows are
    **primarily pre-programmed**, with an auto preset to load for live song
    visualizing. **Fixture cues stay for hybrid shows — don't rip them out.**
 

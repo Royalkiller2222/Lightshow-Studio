@@ -35,7 +35,7 @@ interface".
   5-step spotlight tour (reopen from Help / Ctrl+K), a workspace-aware
   empty-venue note and a "three steps" card on an empty timeline.
 
-**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Content-aware Auto is complete too (5a ✔ v0.14.0, 5b ✔ v0.15.0), and so is the user guide (✔ v0.16.0).
+**The remake is complete.** Laser Stage 3 is complete too; the imports stage is complete too (4a MVR, 4b QLC+, 4c xLights). Content-aware Auto is complete too (5a ✔ v0.14.0, 5b ✔ v0.15.0), and so is the user guide (✔ v0.16.0). Auto was then tuned on a real song (✔ v0.17.0: new tempo detector, sweeps, one-sided sounds).
 
 **The laser track** (BEYOND-style designer) continues after the remake. The
 user runs primarily laser shows. The cue system pivoted from per-attribute
@@ -104,7 +104,24 @@ Effect" parameters**. Fixture cues stay for hybrid shows.
   `guide/*.md` with screenshots, readable on GitHub and inside the app
   (F1 / ? / Ctrl+K: contents, search, links, Back). Keep it in step with UI
   changes.
-- **NEXT:** tune Auto on real songs from the user.
+- **Tuning on the user's songs — ✔ v0.17.0.** One real track so far
+  ("songs/" next to the repo, never committed). What it took:
+  - **Tempo:** a new detector (third-octave onsets against a 100 ms
+    reference, a period scored by how the song repeats over 1–16 beats,
+    folding for 0.01 BPM, half/double chosen by beat energy, whole tempi
+    preferred); bar 1 = the first downbeat; ÷2 / ×2 buttons; a hand-set
+    tempo is kept for its song.
+  - **Sweeps:** the sound's brightness gliding up or down → every picture
+    glides up or down (Position Y keys when pregenerated, a live glide in
+    Live Auto).
+  - **One-sided sounds:** a sound clearly left or right → only that side's
+    projectors show an accent (two lanes by stage side: Auto Left / Auto
+    Right), or the picture leans (one lane). Live Auto does it for the song.
+  - The dialog shows both under the energy chart; two switches (Follow
+    sweeps, Follow sides); tempo-aware look length; drops that sound
+    different stay separate sections.
+- **NEXT:** more songs as the user adds them (other genres will find other
+  misses), then the user's call.
 
 ### Stage 2 follow-ups (small, pick any)
 - **Waveform mode per parameter** — BEYOND's "effect based on waveform": a

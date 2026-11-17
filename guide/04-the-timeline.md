@@ -21,12 +21,27 @@ your cues sit on named tracks underneath it.
 Click **Load song** (mp3, wav, ogg or m4a). The app:
 
 - draws the waveform
-- detects the tempo (BPM), so the bar lines and snapping follow the music
+- listens for the tempo (BPM) and the first downbeat, so the bar lines and
+  snapping follow the music and bar 1 starts where the music does
 - makes the show as long as the song
 
-If the detected tempo is wrong, type the right one in the BPM box in the top
-bar. In Pro, the show inspector (click empty timeline space) also has
-**First beat at**, for songs whose first beat isn't at 0:00.
+Listening takes a second or two; a message says so, then tells you the
+tempo it found.
+
+If the tempo is wrong:
+
+- **Twice too fast or too slow** (the most common miss, such as 82 against
+  164): press **÷2** or **×2** next to the BPM in the top bar. When the
+  song could be counted either way, the "Loaded" message points at the
+  button.
+- **Anything else**: type the right tempo in the BPM box. Decimals are
+  kept (127.95).
+- **The bar lines sit between the beats, or bar 1 is on the wrong beat**:
+  in Pro, the show inspector (click empty timeline space) has **Bar 1
+  starts at**, in seconds.
+
+A tempo you set by hand is saved with the show and kept when you load the
+same song again.
 
 Without a song, the timeline is a 30-second window that grows as you add
 cues.

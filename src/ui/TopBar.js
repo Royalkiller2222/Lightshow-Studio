@@ -15,7 +15,7 @@ export class TopBar {
    * @param {object} deps
    *   transport, shell,
    *   getDuration(): seconds shown after the playhead time,
-   *   actions: { open, save, undo, redo, search, setBpm(v), playPause, stop, welcome, tour, guide },
+   *   actions: { open, save, undo, redo, search, setBpm(v), tempoHalf, tempoDouble, playPause, stop, welcome, tour, guide },
    *   output: { get(): {mode, artnetIp, sacn}, set(patch) }
    */
   constructor(root, { transport, shell, getDuration, actions, output }) {
@@ -50,8 +50,12 @@ export class TopBar {
         <button type="button" class="btn ghost icon" data-act="stop" title="Stop and go back to the start" aria-label="Stop">${icon('stop', 'sm')}</button>
         <div class="tb-time" title="Playhead / show length"><b data-role="time">0:00.0</b><span data-role="dur">/ 0:00</span></div>
         <label class="tb-bpm" title="Tempo in beats per minute. Loading a song detects it.">
-          <input type="number" min="40" max="240" step="0.1" data-role="bpm" aria-label="Tempo (BPM)" /> BPM
+          <input type="number" min="20" max="300" step="0.01" data-role="bpm" aria-label="Tempo (BPM)" /> BPM
         </label>
+        <div class="tb-tempo" role="group" aria-label="Halve or double the tempo">
+          <button type="button" data-act="tempoHalf" title="Half tempo — the grid shows twice as many beats as you count">÷2</button>
+          <button type="button" data-act="tempoDouble" title="Double tempo — you count twice as many beats as the grid shows">×2</button>
+        </div>
       </div>
       <span class="tb-flex"></span>
       <div class="seg" role="group" aria-label="Interface detail">
@@ -197,7 +201,7 @@ export class TopBar {
   }
 
   syncBpm() {
-    if (document.activeElement !== this.bpmInput) this.bpmInput.value = Math.round(this.transport.bpm * 10) / 10;
+    if (document.activeElement !== this.bpmInput) this.bpmInput.value = Math.round(this.transport.bpm * 100) / 100;
   }
 
   setProject(name) {

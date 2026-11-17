@@ -1,6 +1,8 @@
 // "Pregenerate an Auto show": reads the whole song (auto/analyze.js), shows
 // what it found — the energy of every bar, the sections (Intro, Build,
-// Drop…) with their mood, and where each drop hits — and writes an editable
+// Drop…) with their mood, where each drop hits, and under the bars the sweeps
+// (a line: up = the sound gets brighter) and the sounds on one side (ticks:
+// upper = left, lower = right) — and writes an editable
 // laser show onto the timeline with the shared Auto settings. Generating again
 // replaces the earlier Auto tracks with a fresh take (a new seed).
 //
@@ -17,12 +19,14 @@ import { autoForm, bindAutoForm } from './AutoPanel.js';
 // section colours come from the CSS tokens
 const KIND_VAR = { intro: '--c-fixture-hi', verse: '--c-fixture', build: '--warn', drop: '--c-play', break: '--c-laser', outro: '--c-fixture-hi' };
 const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || 'gray';
+const BARS_H = 84, STRIP_H = 24; // the chart: energy bars, and the sweep / side strip under them
 
 export class AutoShowDialog {
   /**
    * deps: hasSong(), onLoadSong(), analysis() -> analyzeSong result (cached),
    *       editSection(t, { kind, mood }) (null = as heard), resetSongMap(),
    *       getSettings(), setSettings(s), palettes(), projectors(),
+   *       bySide() (do the projectors stand left and right of each other?),
    *       autoTrackCount(), onGenerate()
    */
   constructor(deps) {
@@ -106,12 +110,12 @@ export class AutoShowDialog {
     if (!sel) this.sel = null;
     const n = this.d.autoTrackCount();
     this.root.innerHTML = `${head}<div class="ad-body">
-      <canvas class="ad-energy" data-role="energy" height="84" aria-label="The song's energy per bar, with its sections"></canvas>
+      <canvas class="ad-energy" data-role="energy" height="${BARS_H + STRIP_H}" aria-label="The song's energy per bar with its sections; under it the sweeps and the sounds on one side"></canvas>
       <div class="ad-secs" role="group" aria-label="Sections: click one to change it">${an.sections.map((s) => `<button type="button" class="ad-sec${s.edited ? ' edited' : ''}" data-sec="${s.t}" aria-pressed="${String(sel === s)}" style="--k:var(${KIND_VAR[s.kind]})" title="${esc(s.name)}: ${fmtTime(s.t, false)}–${fmtTime(s.end, false)}${s.mood ? ` · ${MOOD_NAMES[s.mood]}` : ''}${s.repeat ? ' · a repeat' : ''}${s.edited ? ' · changed by you' : ''}. Click to change it.">${esc(s.name)}</button>`).join('')}</div>
       ${sel ? this._editor(sel) : ''}
       <p class="ad-p muted small">${summary(an)}${an.sections.some((s) => s.edited) ? ' <button type="button" class="ad-link" data-act="reset-map">Undo all section changes</button>' : ''}</p>
       <div data-role="form"></div>
-      <div class="tip">${icon('help', 'sm')}<div>${this.d.projectors() > 1 && this.d.getSettings().alternate ? 'Adds <b>Auto A</b> and <b>Auto B</b> laser tracks (odd and even projectors) at the top of the timeline. They play' : 'Adds an <b>Auto</b> laser track at the top of the timeline. It plays'} over your other laser tracks, and every cue can be edited.${n ? ` <b>Replaces the ${n === 1 ? 'earlier Auto track' : `${n} earlier Auto tracks`}</b> (and any edits to ${n === 1 ? 'it' : 'them'}).` : ''} Ctrl+Z undoes it.</div></div>
+      <div class="tip">${icon('help', 'sm')}<div>${this.d.projectors() > 1 && this.d.getSettings().alternate ? (this.d.bySide?.() ? 'Adds <b>Auto Left</b> and <b>Auto Right</b> laser tracks (the projectors on each side of the stage) at the top of the timeline. They play' : 'Adds <b>Auto A</b> and <b>Auto B</b> laser tracks (odd and even projectors) at the top of the timeline. They play') : 'Adds an <b>Auto</b> laser track at the top of the timeline. It plays'} over your other laser tracks, and every cue can be edited.${n ? ` <b>Replaces the ${n === 1 ? 'earlier Auto track' : `${n} earlier Auto tracks`}</b> (and any edits to ${n === 1 ? 'it' : 'them'}).` : ''} Ctrl+Z undoes it.</div></div>
       </div>
       <div class="ad-foot"><span class="grow"></span><button type="button" class="btn" data-act="close">Cancel</button>
       <button type="button" class="btn primary" data-act="generate">${icon('sparkles', 'sm')}${n ? 'Generate a new take' : 'Generate'}</button></div>`;
@@ -120,7 +124,7 @@ export class AutoShowDialog {
       form.innerHTML = autoForm(this.d.getSettings(), { palettes: this.d.palettes(), projectors: this.d.projectors(), live: false });
     };
     draw();
-    bindAutoForm(form, () => this.d.getSettings(), (s) => { this.d.setSettings(s); draw(); });
+    bindAutoForm(form, () => this.d.getSettings(), (s) => { this.d.setSettings(s); draw(); this._drawEnergy(an); });
     requestAnimationFrame(() => this._drawEnergy(an));
   }
 
@@ -146,10 +150,10 @@ export class AutoShowDialog {
     const w = c.clientWidth || 520;
     const dpr = window.devicePixelRatio || 1;
     c.width = Math.round(w * dpr);
-    c.height = Math.round(84 * dpr);
+    c.height = Math.round((BARS_H + STRIP_H) * dpr);
     const g = c.getContext('2d');
     g.scale(dpr, dpr);
-    const H = 84, x = (t) => (t / (an.duration || 1)) * w;
+    const H = BARS_H, x = (t) => (t / (an.duration || 1)) * w;
     for (const s of an.sections) {
       g.fillStyle = token(KIND_VAR[s.kind]);
       g.globalAlpha = 0.16;
@@ -171,6 +175,30 @@ export class AutoShowDialog {
       const dx = x(d.t);
       g.beginPath(); g.moveTo(dx - 5, H); g.lineTo(dx + 5, H); g.lineTo(dx, H - 8); g.closePath(); g.fill();
     }
+    // under the bars, what else moves the lasers: the sweep line (up = the
+    // sound gets brighter) and a tick per one-sided sound (upper half = left).
+    // Dimmed when its switch is off.
+    const set = this.d.getSettings();
+    const y0 = H + 4, half = (STRIP_H - 6) / 2, mid = y0 + half;
+    g.fillStyle = token('--line-2');
+    g.fillRect(0, mid, w, 1);
+    g.globalAlpha = set.stereo ? 1 : 0.3;
+    g.fillStyle = token('--warn');
+    for (const m of an.sides || []) g.fillRect(x(m.t0), m.side === 'L' ? y0 : mid + 1, Math.max(2, x(m.t1) - x(m.t0)), half);
+    const v = an.glide?.v;
+    if (v?.length) {
+      g.globalAlpha = set.sweeps ? 1 : 0.3;
+      g.strokeStyle = token('--text-1');
+      g.lineWidth = 1.25;
+      g.beginPath();
+      const step = Math.max(1, Math.floor(v.length / (w * 2)));
+      for (let i = 0; i < v.length; i += step) {
+        const px = x(i / an.glide.fps), py = mid - v[i] * (half - 1);
+        if (i) g.lineTo(px, py); else g.moveTo(px, py);
+      }
+      g.stroke();
+    }
+    g.globalAlpha = 1;
     const sel = an.sections.find((s) => this.sel != null && Math.abs(s.t - this.sel) < 1e-3);
     if (sel) {
       g.strokeStyle = token('--text-1');
@@ -190,7 +218,11 @@ function summary(an) {
   const parts = [plural(an.sections.length, 'section')];
   if (n('drop')) parts.push(`${plural(n('drop'), 'drop')}${(an.drops || []).length ? ' (▲ where the bass hits)' : ''}`);
   if (n('build')) parts.push(plural(n('build'), 'build'));
-  const head = `${parts.join(' · ')} · ${an.bars.length} bars at ${Math.round(an.bpm * 10) / 10} BPM · ${fmtTime(an.duration, false)}.`;
+  const head = `${parts.join(' · ')} · ${an.bars.length} bars at ${Math.round(an.bpm * 100) / 100} BPM · ${fmtTime(an.duration, false)}.`;
   const grid = an.phase ? ` The drops land ${plural(an.phase, 'beat')} after the top bar's downbeat, so the sections follow the drops.` : '';
-  return `${head}${grid} Sections come from how the sound changes; hover one for its mood, click it to change it. Check the BPM in the top bar if the grid looks off.`;
+  const heard = [];
+  if (an.sweeps?.length) heard.push(`${plural(an.sweeps.length, 'sweep')} (the line: up = brighter)`);
+  if (an.sides?.length) heard.push(`${plural(an.sides.length, 'sound')} on one side (the ticks: upper = left, lower = right)`);
+  const strip = heard.length ? ` Under the bars: ${heard.join(' and ')}.` : '';
+  return `${head}${grid}${strip} Sections come from how the sound changes; hover one for its mood, click it to change it. If the bars look twice too long or too short, use ÷2 / ×2 next to the BPM in the top bar.`;
 }

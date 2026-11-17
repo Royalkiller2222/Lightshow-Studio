@@ -30,7 +30,7 @@ import { FIXTURE_TYPES, fixtureType } from './fixtures/registry.js';
 import { PlacementController } from './placement/PlacementController.js';
 import { EditTools } from './placement/EditTools.js';
 import { AudioEngine } from './audio/AudioEngine.js';
-import { analyzeTempo } from './audio/bpm.js';
+import { analyzeTempo, beatOffsetAt } from './audio/bpm.js';
 import { Transport } from './timeline/Transport.js';
 import { TimelinePanel } from './timeline/TimelinePanel.js';
 import { CueInspector, effectShortName } from './timeline/CueInspector.js';
@@ -172,7 +172,7 @@ const transport = new Transport(audio);
 const shell = new Shell();
 let history = null; // assigned in the Project section below
 const commit = () => history?.record();
-const project = { name: 'Demo show' };
+const project = { name: 'Demo show', song: null }; // song: the track this show's tempo belongs to
 
 const editTools = new EditTools({
   canvas, camera, controls, scene, fixtures, grid: 0.5,
@@ -289,6 +289,8 @@ const topBar = new TopBar(document.getElementById('topbar'), {
     redo: () => history.redo(),
     search: () => palette.open(),
     setBpm,
+    tempoHalf: () => scaleTempo(0.5),
+    tempoDouble: () => scaleTempo(2),
     playPause: () => transport.toggle(),
     stop: () => transport.stop(),
     welcome: () => openWelcome(),
@@ -358,6 +360,27 @@ function setAutoSettings(next) {
 }
 const projectorCount = () => Math.max(1, engine.projectors().length);
 
+/**
+ * Where the projectors stand, for Auto. When the left and the right get
+ * different looks (Pairs), which one each projector plays: 0 = left, 1 =
+ * right, as the audience sees the stage (so a sound in the left speaker
+ * changes the lasers on the left). A projector on the centre line takes turns;
+ * a rig with all of them on one line falls back to odd / even (bySide false).
+ * leanSign: −1 when the first projector's picture runs right-to-left for the
+ * audience (it hangs facing them from upstage, say), so "lean left" is right.
+ */
+function projectorSides() {
+  const projs = engine.projectors();
+  const xs = projs.map((p) => p.root.position.x);
+  const lo = Math.min(...xs), hi = Math.max(...xs), mid = (lo + hi) / 2;
+  const bySide = projs.length > 1 && hi - lo > 0.2;
+  let turn = 0;
+  const lanes = xs.map((x, i) => (!bySide ? i % 2 : Math.abs(x - mid) < 0.1 ? turn++ % 2 : x < mid ? 0 : 1));
+  const rig = projs[0]?.laser || fallbackLaser;
+  rig.group.updateWorldMatrix(true, false);
+  return { projs, lanes, bySide, leanSign: rig.group.matrixWorld.elements[0] < 0 ? -1 : 1 };
+}
+
 /** What the analysis heard (cached per song + grid). */
 function rawAnalysis() {
   const c = analysisCache;
@@ -400,9 +423,9 @@ function pregenerate() {
   if (!audio.buffer) return;
   const an = songAnalysis();
   const s = engine.autoSettings;
-  const projs = engine.projectors();
+  const { projs, lanes, bySide, leanSign } = projectorSides();
   const pairs = s.alternate && projs.length > 1;
-  const show = generateShow(an, s, { palettes: engine.palettes, projectors: pairs ? 2 : 1, seed: autoSeed++ });
+  const show = generateShow(an, s, { palettes: engine.palettes, projectors: pairs ? 2 : 1, seed: autoSeed++, leanSign });
   setAuto(false);
   for (const t of autoTracks()) engine.removeTrack(t.id);
   engine.markers = engine.markers.filter((m) => !m.auto);
@@ -410,8 +433,9 @@ function pregenerate() {
   for (const p of show.palettes) if (!engine.palettes.some((x) => x.id === p.id)) engine.palettes.push(p);
   const lane = {};
   if (pairs) {
-    lane.A = engine.addTrack({ name: 'Auto A', kind: 'laser', index: 0, auto: true, target: projs.filter((_, i) => i % 2 === 0) });
-    lane.B = engine.addTrack({ name: 'Auto B', kind: 'laser', index: 1, auto: true, target: projs.filter((_, i) => i % 2 === 1) });
+    // lane A plays on the projectors on the left, B on the right (that's how one-sided sounds find their side)
+    lane.A = engine.addTrack({ name: bySide ? 'Auto Left' : 'Auto A', kind: 'laser', index: 0, auto: true, target: projs.filter((_, i) => lanes[i] === 0) });
+    lane.B = engine.addTrack({ name: bySide ? 'Auto Right' : 'Auto B', kind: 'laser', index: 1, auto: true, target: projs.filter((_, i) => lanes[i] === 1) });
   } else lane.A = engine.addTrack({ name: 'Auto', kind: 'laser', index: 0, auto: true });
   for (const c of show.cues) {
     const track = lane[c.lane];
@@ -432,7 +456,11 @@ function pregenerate() {
   timeline.render();
   history.record();
   const n = show.cues.length;
-  toast(`Auto show: ${n} laser cue${n === 1 ? '' : 's'} over ${an.sections.length} sections. Edit anything; Ctrl+Z undoes it.`, { kind: 'ok', ms: 5500 });
+  const count = (k, word) => `${k} ${word}${k === 1 ? '' : 's'}`;
+  const followed = [];
+  if (s.sweeps && an.sweeps?.length) followed.push(count(an.sweeps.length, 'sweep'));
+  if (s.stereo && an.sides?.length) followed.push(count(an.sides.length, 'one-sided sound'));
+  toast(`Auto show: ${count(n, 'laser cue')} over ${count(an.sections.length, 'section')}${followed.length ? `, following ${followed.join(' and ')}` : ''}. Edit anything; Ctrl+Z undoes it.`, { kind: 'ok', ms: 6000 });
 }
 
 const autoDialog = new AutoShowDialog({
@@ -445,6 +473,7 @@ const autoDialog = new AutoShowDialog({
   setSettings: setAutoSettings,
   palettes: () => engine.palettes,
   projectors: projectorCount,
+  bySide: () => projectorSides().bySide,
   autoTrackCount: () => autoTracks().length,
   onGenerate: pregenerate,
 });
@@ -507,8 +536,38 @@ function resetCamera() {
 
 function setBpm(v) {
   transport.bpm = v;
+  transport.byHand = true;
   topBar.syncBpm();
   commit();
+}
+
+/**
+ * ÷2 / ×2 next to the tempo: the detector can't always tell 82 from 164 —
+ * both fit the music, it's how you count it. With a song loaded the beat and
+ * bar 1 are found again for the new tempo.
+ */
+function scaleTempo(f) {
+  const bpm = Math.round(transport.bpm * f * 100) / 100;
+  if (bpm < 20 || bpm > 300) { toast(`${bpm} BPM is outside what the grid supports (20 – 300).`, { kind: 'error' }); return; }
+  transport.bpm = bpm;
+  transport.byHand = true;
+  if (audio.buffer) {
+    transport.beatOffset = beatOffsetAt(audio.buffer, bpm);
+    alignBars();
+  }
+  topBar.syncBpm();
+  commit();
+  toast(`Tempo ${f < 1 ? 'halved' : 'doubled'}: ${bpm} BPM.`, { kind: 'ok' });
+}
+
+/**
+ * Put bar 1 on the music's first downbeat. The tempo detector finds the beat;
+ * the song analysis hears which beat is "one" (drops land on it). With both,
+ * the ruler's bar lines are the music's bars and Auto's sections sit on them.
+ */
+function alignBars() {
+  const an = rawAnalysis();
+  if (an.phase) transport.beatOffset = an.first; // (the analysis re-reads on the new grid when next asked — cheap, the listening is cached)
 }
 
 function setRoom(w, d, h) {
@@ -548,19 +607,40 @@ function deselectAll() {
 }
 
 async function loadSong(file) {
+  let listening = null;
   try {
     await audio.load(file);
     transport.pause();
     transport.seek(0);
-    // Auto-detect tempo + downbeat so the grid and snapping line up.
-    const { bpm, offset } = analyzeTempo(audio.buffer);
-    transport.bpm = bpm;
-    transport.beatOffset = offset;
+    // Listening to the whole song (tempo, beat, bars) blocks the window for a
+    // second or two: say so first and let the message paint.
+    listening = toast(`Listening to "${audio.name}"…`, { ms: 60000 });
+    await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+    // A tempo the user set by hand for this very song stays (opening a saved
+    // show, then loading its song again); otherwise detect it.
+    const kept = transport.byHand && project.song === audio.name;
+    let tempo = null;
+    if (!kept) {
+      tempo = analyzeTempo(audio.buffer);
+      transport.bpm = tempo.bpm;
+      transport.beatOffset = tempo.offset;
+      transport.byHand = false;
+      alignBars();
+    }
+    project.song = audio.name;
+    listening();
     topBar.syncBpm();
     timeline.onAudioLoaded();
     commit();
-    toast(`Loaded "${audio.name}" — ${Math.round(bpm * 10) / 10} BPM detected`, { kind: 'ok' });
+    const bpm = transport.bpm;
+    let note = `${bpm} BPM`;
+    if (kept) note += ' (the tempo you set)';
+    else if (tempo.confidence < 0.1) note = `no steady beat found, so the grid is a guess (${bpm} BPM). Set the tempo by hand if you need the grid`;
+    else if (tempo.alt && tempo.margin < 1.25 && Math.abs(tempo.alt / bpm - 2) < 0.02) note += '. Counting it twice as fast? Press ×2 next to the tempo';
+    else if (tempo.alt && tempo.margin < 1.25 && Math.abs(tempo.alt / bpm - 0.5) < 0.01) note += '. Counting it half as fast? Press ÷2 next to the tempo';
+    toast(`Loaded "${audio.name}" — ${note}.`, { kind: 'ok', ms: note.length > 30 ? 7000 : 3200 });
   } catch (e) {
+    listening?.();
     console.warn('Audio load failed:', e.message);
     toast(`Couldn't load that song: ${e.message}`, { kind: 'error' });
   }
@@ -631,6 +711,7 @@ projFile.addEventListener('change', async () => {
     const data = JSON.parse(await file.text());
     applyProject(ctx, data);
     project.name = file.name.replace(/\.json$/i, '');
+    project.song = data.audioName || null;
     topBar.setProject(project.name);
     topBar.syncBpm();
     history.reset();
@@ -896,6 +977,7 @@ function startShow(id, { firstRun = false } = {}) {
   const empty = id === 'empty';
   applyProject(ctx, structuredClone(empty ? EMPTY_SHOW : DEMO_SNAPSHOT));
   project.name = empty ? 'Untitled show' : 'Demo show';
+  project.song = null;
   topBar.setProject(project.name);
   topBar.syncBpm();
   resetCamera();
@@ -946,7 +1028,10 @@ function animate() {
     // live Auto: hear the song or the sound input; follow the song's beat while it plays
     const input = engine.autoSettings.source === 'input' && audio.inputOn;
     autoBeat = transport.playing ? transport.beat : autoBeat + (dt * transport.bpm) / 60;
-    engine.auto.update({ beat: autoBeat, bands: input ? audio.inputBands() : audio.bands(), dt, palettes: engine.palettes });
+    const sides = projectorSides();
+    engine.auto.lanes = sides.lanes;
+    engine.auto.leanSign = sides.leanSign;
+    engine.auto.update({ beat: autoBeat, bands: input ? audio.inputBands() : audio.bands(), lean: input ? 0 : audio.lean(), dt, palettes: engine.palettes });
   }
   engine.update(transport.time, transport.bpm, audio.bands());
   for (const f of fixtures) f.update(dt);

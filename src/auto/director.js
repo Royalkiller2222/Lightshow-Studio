@@ -17,6 +17,15 @@
 //                   - emotion: each section's mood (from the music, or the
 //                     chosen Mood) picks the palette, the patterns that suit
 //                     it, the speed and how often things change
+//                   - sweeps: when the sound glides brighter or duller (a
+//                     filter opening, a riser), the picture glides up or down
+//                     with it (Position Y keyframes)
+//                   - one-sided sounds: when something plays clearly left or
+//                     right, only that side's lasers change — a brighter,
+//                     different pattern — and their look comes back when the
+//                     stereo picture is normal again (lane A = the left
+//                     projectors, B = the right). One projector leans its
+//                     picture towards the sound instead
 //   LiveDirector    Live — hears only "now" (the analyser's bass/mid/high), so
 //                   it tracks a slow energy level to choose patterns, changes on
 //                   bar lines, jumps on a sudden energy rise (a drop), and
@@ -25,6 +34,7 @@
 // Pure logic, no DOM, no Three.js — Node-testable.
 
 import { allPatterns } from '../laser/patterns.js';
+import { evalEnvelope } from '../laser/envelopes.js';
 
 /** Energy tier per built-in pattern: 0 calm, 1 medium, 2 high. */
 export const PATTERN_TIER = {
@@ -94,7 +104,9 @@ export const AUTO_DEFAULTS = {
   mood: 'auto',           // pregenerate: a MOODS key ('auto' = from the music)
   groups: ['beams', 'shapes', 'waves', 'graphics'],
   imported: true,         // may use the show's imported ILDA patterns
-  alternate: true,        // with 2+ projectors, odd/even ones get different patterns
+  alternate: true,        // with 2+ projectors, the left and the right ones get different patterns
+  sweeps: true,           // the picture moves up / down with sweeps in the sound
+  stereo: true,           // a sound on one side changes only that side's lasers
   markers: true,          // pregenerate: add section markers (they become Live pads)
   source: 'song',         // live: 'song' (the loaded track) or 'input' (sound input)
 };
@@ -112,6 +124,8 @@ export function normalizeAutoSettings(s) {
     groups: groups.length ? groups : d.groups.slice(),
     imported: s.imported !== false,
     alternate: s.alternate !== false,
+    sweeps: s.sweeps !== false,
+    stereo: s.stereo !== false,
     markers: s.markers !== false,
     source: s.source === 'input' ? 'input' : 'song',
   };
@@ -119,6 +133,16 @@ export function normalizeAutoSettings(s) {
 
 const BIAS = { calm: -0.15, balanced: 0, wild: 0.15 };
 const DEPTH = { calm: 0.6, balanced: 1, wild: 1.35 }; // modulation depth
+const SWEEP_DEPTH = { calm: 0.3, balanced: 0.45, wild: 0.6 }; // Position Y a full sweep reaches (1 ≈ 21°)
+const LEAN_DEPTH = { calm: 0.2, balanced: 0.3, wild: 0.4 };   // Position X one projector leans to a one-sided sound
+const BAR_REF = 1.875;    // seconds: the bar length (128 BPM) the hold times below are meant for
+const SIDE_SHORT = 0.25;  // seconds: no accent shorter than this…
+const SIDE_SLIVER = 0.2;  // …and no leftover of the look shorter than this beside it
+// Live Auto hears the same things without knowing what comes next:
+const LIVE_SWEEP_DEAD = 0.12; // octaves the brightness may wander from its recent average
+const LIVE_SWEEP_FULL = 0.45; // octaves past that for (nearly) the full swing
+const LIVE_SIDE_ON = 0.2;     // balance (0..1) that starts a one-sided moment…
+const LIVE_SIDE_OFF = 0.08;   // …and ends it
 
 /** Energy (0..1) -> tier 0/1/2, shifted by the intensity setting. */
 export function tierFor(energy, intensity = 'balanced') {
@@ -184,12 +208,16 @@ export function paletteFor(settings, kind, palettes) {
 /** A section's mood when the analysis has none (older analyses, hand-made sections). */
 const KIND_MOOD = { drop: 'euphoric', build: 'aggressive', verse: 'dark', intro: 'dreamy', break: 'dreamy', outro: 'dreamy' };
 
-/** Bars a look holds in a section, before fills and the mood shorten / stretch it. */
-function holdBars(settings, kind, style, hero) {
+/**
+ * Bars a look holds in a section, before fills and the mood shorten / stretch it.
+ * Looks last in time, not in bars: a bar at 82 BPM is as long as two at 164,
+ * so slow songs change after half as many bars (in powers of two: phrases).
+ */
+function holdBars(settings, kind, style, hero, barLen = BAR_REF) {
   if (settings.every !== 'auto') return settings.every;
   let base = { drop: 4, verse: 4, build: 4, break: 8, intro: 8, outro: 8 }[kind] || 4;
   if (hero) base = 2;
-  base *= style.hold;
+  base *= style.hold * 2 ** Math.round(Math.log2(BAR_REF / barLen));
   if (settings.intensity === 'wild') base /= 2;
   if (settings.intensity === 'calm') base *= 2;
   return Math.max(1, Math.min(16, Math.round(base)));
@@ -200,12 +228,15 @@ const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
 /**
  * Pregenerate: the analysis -> laser cue specs.
- * Returns { cues: [{ lane:'A'|'B', pattern, start, duration, params, anim, colorRef, unison? }],
+ * Returns { cues: [{ lane:'A'|'B', pattern, start, duration, params, anim, colorRef, unison?, side? }],
  *           markers: [{ t, name }],
  *           palettes: [palettes the show doesn't have yet but the cues use] }.
- * Times in seconds.
+ * Times in seconds. With projectors > 1 (and Pairs on) lane A is for the
+ * left projectors and B for the right ones; `side` marks a cue that answers
+ * a one-sided sound. `leanSign`: −1 when the single projector's Position X
+ * runs against the audience's left → right.
  */
-export function generateShow(an, settings, { palettes = [], projectors = 1, seed = 1 } = {}) {
+export function generateShow(an, settings, { palettes = [], projectors = 1, seed = 1, leanSign = 1 } = {}) {
   const s = normalizeAutoSettings(settings);
   const rand = rng(seed);
   const list = candidates(s);
@@ -251,7 +282,7 @@ export function generateShow(an, settings, { palettes = [], projectors = 1, seed
     let bounds;
     if (sec.kind === 'build' && s.every === 'auto') bounds = [sec.bar0];
     else {
-      const per = holdBars(s, sec.kind, style, isHero);
+      const per = holdBars(s, sec.kind, style, isHero, an.barLen);
       bounds = [];
       for (let b = sec.bar0; b < sec.bar1; b += per) bounds.push(b);
       if (s.every === 'auto') {
@@ -312,21 +343,185 @@ export function generateShow(an, settings, { palettes = [], projectors = 1, seed
       }
       const fills = sl.map((b, k) => (b.fill ? an.bars[b0 + k].t + 3 * beatLen : null)).filter((x) => x != null && x < t0 + duration);
       const ctx = { an, kind: sec.kind, t0, dur: duration, tier, depth: depth * lvl, beatLen, speed: style.speed, opening, fills, bars: sl, base };
-      cues.push({ lane: 'A', pattern: pa, start: r3(t0), duration: r3(duration), params: base, anim: cueAnim({ ...ctx, dir }), colorRef, ...(unison ? { unison } : {}) });
+      const note = { _tier: tier, _mood: mood }; // for the accents below; not part of the result
+      cues.push({ lane: 'A', pattern: pa, start: r3(t0), duration: r3(duration), params: base, anim: cueAnim({ ...ctx, dir }), colorRef, ...(unison ? { unison } : {}), ...note, _dir: dir });
       if (two) {
         cues.push({
           lane: 'B', pattern: pb, start: r3(t0), duration: r3(duration), params: { ...base },
           anim: cueAnim({ ...ctx, dir: -dir }),
           colorRef: { ...colorRef, index: colorRef.index + (sec.kind === 'build' ? 0 : 2) },
-          ...(unison ? { unison } : {}),
+          ...(unison ? { unison } : {}), ...note, _dir: -dir,
         });
       }
     });
     if (fresh) motif.set(sec.group, looks);
   });
 
+  // one-sided sounds: only that side's lasers change (two lanes), or the
+  // picture leans towards the sound (one)
+  if (s.stereo && an.sides?.length) {
+    if (two) followSides(cues, an.sides, { list, rand, beatLen });
+    else {
+      const lean = leanCurve(an.sides, LEAN_DEPTH[s.intensity] * leanSign);
+      for (const c of cues) {
+        const keys = curveKeys(lean, c.start, c.duration);
+        if (keys) c.anim.posX = { ease: 'linear', keys };
+      }
+    }
+  }
+  // sweeps: every picture glides up and down with the sound's brightness
+  if (s.sweeps && an.glide?.v?.length) {
+    const depthY = SWEEP_DEPTH[s.intensity];
+    const path = simplify(an.glide.v, an.glide.fps, 0.06).map((p) => ({ t: p.t, v: p.v * depthY }));
+    for (const c of cues) {
+      const keys = curveKeys(path, c.start, c.duration);
+      if (keys) c.anim.posY = { ease: 'linear', keys };
+    }
+  }
+  for (const c of cues) { delete c._tier; delete c._mood; delete c._dir; }
+  cues.sort((x, y) => x.start - y.start || (x.lane < y.lane ? -1 : x.lane > y.lane ? 1 : 0));
+
   const markers = s.markers ? an.sections.map((x) => ({ t: r3(x.t), name: x.name })) : [];
   return { cues, markers, palettes: addPalettes };
+}
+
+/**
+ * One-sided sounds with two lanes: the cue playing on that side is cut where
+ * the sound starts and ends; in between sits an accent — a different, busier
+ * pattern in another colour of the palette, at full brightness with a pop —
+ * and after it the look carries on exactly where it would have been.
+ */
+function followSides(cues, sides, { list, rand, beatLen }) {
+  // two moments on one side with less than half a beat between them are one
+  // (a blink of the old look in between only flickers)
+  const moments = [];
+  for (const m of sides) {
+    const p = moments[moments.length - 1];
+    if (p && p.side === m.side && m.t0 - p.t1 < Math.max(0.3, beatLen / 2)) { p.t1 = m.t1; p.amount = Math.max(p.amount, m.amount); }
+    else moments.push({ ...m });
+  }
+  for (const m of moments) {
+    const lane = m.side === 'L' ? 'A' : 'B';
+    let t = m.t0;
+    while (m.t1 - t >= SIDE_SHORT) {
+      // the first look on that side still playing at t, or starting during the sound
+      let i = -1;
+      cues.forEach((c, j) => {
+        if (c.lane !== lane || c.side || c.start + c.duration <= t + 0.05 || c.start >= m.t1) return;
+        if (i < 0 || c.start < cues[i].start) i = j;
+      });
+      if (i < 0) break; // dark (the gap before a drop), or already an accent
+      const c = cues[i], end = c.start + c.duration;
+      let a = Math.max(t, c.start), b = Math.min(m.t1, end);
+      if (a - c.start < SIDE_SLIVER) a = c.start;
+      if (end - b < SIDE_SLIVER) b = end;
+      if (b - a < SIDE_SHORT) break;
+      const other = cues.find((x) => x.lane !== lane && a >= x.start && a < x.start + x.duration);
+      const parts = [];
+      if (a > c.start) parts.push(sliceCue(c, c.start, a));
+      parts.push(accentCue(c, a, b, m, other, { list, rand, beatLen }));
+      if (b < end) parts.push(sliceCue(c, b, end));
+      cues.splice(i, 1, ...parts);
+      t = end; // a sound that outlasts this look carries on in the next one
+    }
+  }
+}
+
+function accentCue(c, a, b, m, other, { list, rand, beatLen }) {
+  const dur = b - a;
+  const tier = Math.min(2, (c._tier ?? 1) + 1);
+  const pattern = pickPattern(tier, list, rand, [c.pattern, other?.pattern].filter(Boolean), c._mood);
+  const size = r3(clamp((c.params.size || 1) * 1.12, 0.5, 1.3));
+  const turn = (c._dir || 1) * Math.min(Math.PI / 2, (dur / beatLen) * 0.6);
+  return {
+    lane: c.lane, pattern, start: r3(a), duration: r3(dur), side: m.side,
+    params: { size, brightness: 1 },
+    anim: {
+      size: { ease: 'smooth', keys: [{ t: 0, v: r3(Math.min(2, size * 1.25)) }, { t: r3(Math.min(1, beatLen / 2 / dur)), v: size }] },
+      brightness: { ease: 'linear', keys: [{ t: 0, v: 1 }, { t: 1, v: 0.8 }] },
+      rotZ: { ease: 'linear', keys: [{ t: 0, v: 0 }, { t: 1, v: r3(turn) }] },
+    },
+    colorRef: c.colorRef ? { ...c.colorRef, mode: 'pick', index: (c.colorRef.index || 0) + 1, fade: false } : c.colorRef,
+    _tier: tier, _mood: c._mood, _dir: c._dir,
+  };
+}
+
+/** The part of a cue between a and b (seconds), animation and all. */
+function sliceCue(c, a, b) {
+  const u0 = (a - c.start) / c.duration, u1 = (b - c.start) / c.duration;
+  const anim = {};
+  for (const key in c.anim) anim[key] = sliceEnv(c.anim[key], u0, u1);
+  return { ...c, start: r3(a), duration: r3(b - a), params: { ...c.params }, anim, colorRef: c.colorRef && { ...c.colorRef } };
+}
+
+function sliceEnv(env, u0, u1) {
+  const map = (u) => r3((u - u0) / (u1 - u0));
+  const keys = [{ t: 0, v: r3(evalEnvelope(env, u0)) }];
+  if (env.ease === 'smooth') {
+    // a smooth curve cut mid-ease isn't one any more: trace it with straight pieces
+    const cuts = [u0, ...env.keys.map((k) => k.t).filter((t) => t > u0 && t < u1), u1];
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      for (let j = 1; j <= 6; j++) {
+        const u = cuts[i] + ((cuts[i + 1] - cuts[i]) * j) / 6;
+        keys.push({ t: map(u), v: r3(evalEnvelope(env, u)) });
+      }
+    }
+    return { ease: 'linear', keys: dedupe(keys) };
+  }
+  for (const k of env.keys) if (k.t > u0 + 1e-6 && k.t < u1 - 1e-6) keys.push({ t: map(k.t), v: k.v });
+  keys.push({ t: 1, v: r3(evalEnvelope(env, u1)) });
+  return { ease: env.ease, keys: dedupe(keys) };
+}
+
+/** One projector: the picture slides towards each one-sided sound and back. [{ t, v }] */
+function leanCurve(sides, depth) {
+  const pts = [];
+  const push = (t, v) => { if (!pts.length || t > pts[pts.length - 1].t + 1e-3) pts.push({ t, v }); };
+  for (const m of sides) {
+    const v = (m.side === 'L' ? -1 : 1) * depth * (0.6 + 0.4 * m.amount);
+    push(m.t0, 0);
+    push(m.t0 + 0.08, v);
+    push(Math.max(m.t0 + 0.09, m.t1), v);
+    push(Math.max(m.t0 + 0.09, m.t1) + 0.3, 0);
+  }
+  return pts;
+}
+
+/** A sampled curve -> the few points that draw it (Douglas–Peucker). [{ t, v }] */
+function simplify(v, fps, tol) {
+  const n = v.length;
+  if (!n) return [];
+  const keep = new Uint8Array(n);
+  keep[0] = keep[n - 1] = 1;
+  const stack = [[0, n - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    let worst = 0, at = -1;
+    for (let i = a + 1; i < b; i++) {
+      const d = Math.abs(v[i] - (v[a] + ((v[b] - v[a]) * (i - a)) / (b - a)));
+      if (d > worst) { worst = d; at = i; }
+    }
+    if (worst > tol) { keep[at] = 1; stack.push([a, at], [at, b]); }
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) if (keep[i]) out.push({ t: i / fps, v: v[i] });
+  return out;
+}
+
+/** A song-long curve ([{ t, v }], straight between points) as one cue's keys; null where it rests. */
+function curveKeys(pts, t0, dur) {
+  if (!pts.length) return null;
+  const at = (t) => {
+    if (t <= pts[0].t) return pts[0].v;
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].t >= t) { const a = pts[i - 1], b = pts[i]; return a.v + ((b.v - a.v) * (t - a.t)) / (b.t - a.t || 1); }
+    }
+    return pts[pts.length - 1].v;
+  };
+  const keys = [{ t: 0, v: r3(at(t0)) }];
+  for (const p of pts) if (p.t > t0 + 1e-3 && p.t < t0 + dur - 1e-3) keys.push({ t: r3((p.t - t0) / dur), v: r3(p.v) });
+  keys.push({ t: 1, v: r3(at(t0 + dur)) });
+  return keys.some((k) => Math.abs(k.v) >= 0.03) ? dedupe(keys) : null;
 }
 
 /**
@@ -435,9 +630,22 @@ export class LiveDirector {
     this._pendingBeat = null;
     this.changes = 0;
     this.beat = 0;
+    // sweeps and one-sided sounds (see update)
+    this.lanes = null;    // per projector: 0 = the left look, 1 = the right (set by the app; null = odd / even)
+    this.leanSign = 1;    // −1: the single projector's Position X runs against the audience's left → right
+    this.glide = 0;       // −1..1: where sweeps have taken the pictures (Position Y)
+    this.side = null;     // 'L' | 'R' while a sound sits on one side
+    this.accent = null;   // the pattern that side shows meanwhile
+    this._bFast = this._bSlow = 0;
+    this._bOn = false;
+    this._lean = this._leanSlow = this._leanX = 0;
+    this._sideT = 0;      // seconds the balance has been off-centre / the accent has shown
     this._cues = [this._cue(0), this._cue(1)];
     this._pick(true);
   }
+
+  /** Two looks (left / right) in play? Otherwise one-sided sounds lean the picture. */
+  get two() { return this.settings.alternate && !!this.lanes && this.lanes.includes(0) && this.lanes.includes(1); }
 
   setSettings(s) {
     const next = normalizeAutoSettings(s);
@@ -469,10 +677,11 @@ export class LiveDirector {
   }
 
   /**
-   * time: song (or free-running) seconds; beat: song beat number (float);
-   * bands: { bass, mid, high } 0..1 or null; dt: seconds since last frame.
+   * beat: song beat number (float); bands: { bass, mid, high } 0..1, optionally
+   * bright (octaves, 0 = unknown) or null; lean: −1 left … 1 right (0 =
+   * centred / unknown); dt: seconds since last frame.
    */
-  update({ beat, bands, dt, palettes = [] }) {
+  update({ beat, bands, lean = 0, dt, palettes = [] }) {
     const s = this.settings;
     this.beat = beat;
     dt = Math.max(0, Math.min(0.1, dt || 0));
@@ -488,6 +697,39 @@ export class LiveDirector {
     this.bass += ((this.heard > 1.5 ? 0 : b.bass) - this.bass) * k(0.06);
     this.high += ((this.heard > 1.5 ? 0.3 : b.high) - this.high) * k(0.15);
     this._cool = Math.max(0, this._cool - dt);
+
+    // sweeps: the brightness now against its own last few seconds. Past a
+    // dead zone (the mix breathing) the pictures glide with it; as the slow
+    // average catches up they come home.
+    if (s.sweeps && b.bright > 0 && !silent) {
+      if (!this._bOn) { this._bFast = this._bSlow = b.bright; this._bOn = true; }
+      this._bFast += (b.bright - this._bFast) * k(0.25);
+      this._bSlow += (b.bright - this._bSlow) * k(3);
+    } else if (this.heard > 1.5) this._bOn = false;
+    const off = this._bOn && s.sweeps ? this._bFast - this._bSlow : 0;
+    const over = Math.abs(off) - LIVE_SWEEP_DEAD;
+    this.glide += ((over > 0 ? Math.sign(off) * Math.tanh(over / LIVE_SWEEP_FULL) : 0) - this.glide) * k(0.15);
+
+    // one-sided sounds: the balance against the mix's own slow lean. Clearly
+    // off-centre for a moment -> that side changes until it's back.
+    const bal = s.stereo && !silent ? lean : 0;
+    this._lean += (bal - this._lean) * k(0.06);
+    this._leanSlow += (bal - this._leanSlow) * k(8);
+    const tilt = this._lean - this._leanSlow;
+    if (this.side) {
+      this._sideT += dt;
+      const same = (tilt > 0) === (this.side === 'R');
+      if (this._sideT > 0.25 && (!same || Math.abs(tilt) < LIVE_SIDE_OFF)) { this.side = null; this._sideT = 0; }
+    } else if (Math.abs(tilt) >= LIVE_SIDE_ON) {
+      this._sideT += dt;
+      if (this._sideT >= 0.1) {
+        this.side = tilt > 0 ? 'R' : 'L';
+        this._sideT = 0;
+        this.accent = pickPattern(Math.min(2, this.tier + 1), candidates(s), this.rand, this.patterns);
+      }
+    } else this._sideT = 0;
+    const two = this.two;
+    this._leanX += ((this.side && !two ? (this.side === 'L' ? -1 : 1) * LEAN_DEPTH[s.intensity] * this.leanSign : 0) - this._leanX) * k(0.08);
 
     const want = tierFor(this.slow, s.intensity);
     // a drop: energy jumps well above the recent average
@@ -529,18 +771,24 @@ export class LiveDirector {
     const pal = paletteFor(s, ['break', 'verse', 'drop'][this.tier], palettes);
     for (let i = 0; i < 2; i++) {
       const c = this._cues[i];
-      this.spin[i] = (this.spin[i] + (i ? -1 : 1) * this.dir * spinRate * dt) % (Math.PI * 2);
-      c.pattern = this.patterns[i];
+      // the side a sound is on shows its accent: another pattern, another colour, full brightness
+      const acc = two && this.side === (i ? 'R' : 'L');
+      this.spin[i] = (this.spin[i] + (i ? -1 : 1) * this.dir * spinRate * (acc ? 2 : 1) * dt) % (Math.PI * 2);
+      c.pattern = acc ? this.accent : this.patterns[i];
       c.params.rotZ = this.spin[i];
-      c.params.size = clamp((0.75 + 0.15 * this.tier) * (1 + 0.22 * pulse * depth), 0.3, 1.6);
-      c.params.brightness = clamp((0.5 + 0.12 * this.tier) + 0.45 * pulse * depth, 0.2, 1);
-      c.colorRef = pal ? { palette: pal, mode: 'cycle', index: i * 2, every: [4, 2, 1][this.tier], fade: this.tier < 2 } : null;
+      c.params.size = clamp((0.75 + 0.15 * this.tier) * (1 + 0.22 * pulse * depth) * (acc ? 1.12 : 1), 0.3, 1.6);
+      c.params.brightness = acc ? 1 : clamp((0.5 + 0.12 * this.tier) + 0.45 * pulse * depth, 0.2, 1);
+      c.params.posY = this.glide * SWEEP_DEPTH[s.intensity];
+      c.params.posX = this._leanX;
+      c.colorRef = pal ? (acc
+        ? { palette: pal, mode: 'pick', index: i * 2 + 1, every: 1, fade: false }
+        : { palette: pal, mode: 'cycle', index: i * 2, every: [4, 2, 1][this.tier], fade: this.tier < 2 }) : null;
       c.start = 0;
     }
   }
 
-  /** What projector i draws (pairs alternate when the setting is on). */
-  cueFor(i) { return this._cues[this.settings.alternate ? i % 2 : 0]; }
+  /** What projector i draws: the left or the right look when Pairs is on. */
+  cueFor(i) { return this._cues[this.settings.alternate ? (this.lanes?.[i] ?? i % 2) : 0]; }
 
   /** A short description for the Live panel: "Medium · Tunnel". */
   get status() { return ['Calm', 'Medium', 'High'][this.tier]; }

@@ -28,11 +28,13 @@ bottom lists them. See [The rig](03-the-rig.md) for the details.
 ## 3. Load your song
 
 Switch to **Program** (Ctrl+2) and click **Load song** above the timeline.
-The waveform appears and the tempo is detected, so cues snap to the beat
-and bar lines match the music.
+The app listens to the song for a moment, then the waveform appears with
+the tempo and the first downbeat found, so cues snap to the beat and bar
+lines match the music.
 
-Check the BPM in the top bar. If the bar lines drift from the beat, type the
-right tempo there.
+Check the BPM in the top bar. If the grid counts twice as fast or half as
+fast as you do, press **×2** or **÷2** next to it. If the bar lines drift
+from the beat, type the right tempo there.
 
 ## 4. Add laser cues
 

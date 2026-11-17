@@ -350,7 +350,7 @@ export class Inspector {
         <div class="prop"><span class="name">Track</span><span class="ctl ${d.audio.name ? '' : 'muted'}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.audio.name || 'None — the clock runs free')}</span></div>
         ${t.hasAudio ? `<div class="prop"><span class="name">Length</span><span class="ctl">${fmtTime(t.duration, false)}</span></div>` : ''}
         <div class="prop"><span class="name">Tempo</span><span class="ctl">${r2(t.bpm)} BPM</span></div>
-        <label class="prop pro"><span class="name">First beat at</span><span class="ctl"><input type="number" step="0.01" min="0" data-show="offset" value="${r2(t.beatOffset || 0)}" style="width:80px" /><span class="muted small">seconds</span></span></label>
+        <label class="prop pro" title="Where the ruler's bar 1 starts: the music's first downbeat. Loading a song finds it."><span class="name">Bar 1 starts at</span><span class="ctl"><input type="number" step="0.01" min="0" data-show="offset" value="${r2(t.beatOffset || 0)}" style="width:80px" /><span class="muted small">seconds</span></span></label>
         <div style="margin-top:8px"><button type="button" class="btn sm" data-act="load-song">${icon('music', 'sm')}${t.hasAudio ? 'Replace song' : 'Load song'}</button></div>
       </div>
       <div class="sec">
@@ -428,7 +428,7 @@ export class Inspector {
     }
     if (el.dataset.show === 'offset') {
       const off = parseFloat(el.value);
-      if (Number.isFinite(off) && off >= 0) { d.transport.beatOffset = off; d.onCommit(); }
+      if (Number.isFinite(off) && off >= 0) { d.transport.beatOffset = off; d.transport.byHand = true; d.onCommit(); }
       this.refresh();
       return;
     }

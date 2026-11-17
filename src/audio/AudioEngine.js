@@ -2,6 +2,14 @@
 // (mp3/wav/ogg/m4a) via decodeAudioData - no FFmpeg, so the one-click install
 // stays intact. An AudioBufferSourceNode can only play once, so we recreate it
 // on every play and track position against the AudioContext clock.
+//
+// For live Auto it also reports how bright the sound is (bands().bright, for
+// sweeps) and, through a left and a right tap, which side it sits on (lean()).
+
+// analyser byte (dB between -100 and -30) -> amplitude and its square root
+const AMP = new Float32Array(256), ROOT = new Float32Array(256);
+for (let i = 1; i < 256; i++) { const db = -100 + (i / 255) * 70; AMP[i] = 10 ** (db / 20); ROOT[i] = 10 ** (db / 40); }
+const SIDE_EDGES = [250, 1000, 4000, 10000, 16000]; // Hz: the bands a side is judged in (above the bass)
 
 export class AudioEngine {
   constructor() {
@@ -20,12 +28,50 @@ export class AudioEngine {
     this.analyser.smoothingTimeConstant = 0.7;
     this.analyser.connect(this.ctx.destination);
     this._freq = new Uint8Array(this.analyser.frequencyBinCount);
+
+    // Left / right taps (source -> splitter -> one analyser each; not to the
+    // speakers, the main analyser already plays the song).
+    this._split = this.ctx.createChannelSplitter(2);
+    this._sides = [0, 1].map((ch) => {
+      const an = this.ctx.createAnalyser();
+      an.fftSize = 1024;
+      an.smoothingTimeConstant = 0.5;
+      this._split.connect(an, ch);
+      return { an, freq: new Uint8Array(an.frequencyBinCount) };
+    });
+    this._sideRef = SIDE_EDGES.slice(1).map(() => 0); // each band's recent loud level
   }
 
-  /** Normalised low/mid/high band levels (0..1) of the audio playing now. */
+  /**
+   * Normalised low/mid/high band levels (0..1) of the audio playing now, plus
+   * bright: where the sound's weight sits above the bass, in octaves (log2 Hz;
+   * 0 = too quiet to tell).
+   */
   bands() {
-    if (!this.playing || !this.buffer) return { bass: 0, mid: 0, high: 0 };
+    if (!this.playing || !this.buffer) return { bass: 0, mid: 0, high: 0, bright: 0 };
     return this._bands(this.analyser, this._freq);
+  }
+
+  /**
+   * Which side the song sits on right now: −1 all left … 0 centred … 1 all
+   * right, judged above the bass, each band against its own recent loud level
+   * (the same measure as the whole-song analysis). 0 for a mono song.
+   */
+  lean() {
+    if (!this.playing || !this.buffer || this.buffer.numberOfChannels < 2) return 0;
+    const [l, r] = this._sides;
+    l.an.getByteFrequencyData(l.freq);
+    r.an.getByteFrequencyData(r.freq);
+    const binHz = this.ctx.sampleRate / l.an.fftSize;
+    let d = 0, w = 0;
+    for (let b = 0; b + 1 < SIDE_EDGES.length; b++) {
+      const i0 = Math.max(1, Math.round(SIDE_EDGES[b] / binHz)), i1 = Math.min(l.freq.length, Math.round(SIDE_EDGES[b + 1] / binHz));
+      let sl = 0, sr = 0;
+      for (let i = i0; i < i1; i++) { sl += AMP[l.freq[i]]; sr += AMP[r.freq[i]]; }
+      const ref = this._sideRef[b] = Math.max(this._sideRef[b] * 0.999, sl + sr); // the loud level fades over ~10 s
+      if (ref > 0) { d += (sr - sl) / ref; w += (sr + sl) / ref; }
+    }
+    return w / this._sideRef.length >= 0.2 ? d / w : 0; // too quiet: no side
   }
 
   _bands(analyser, freq) {
@@ -39,7 +85,10 @@ export class AudioEngine {
       const avg = i1 >= i0 ? sum / (i1 - i0 + 1) / 255 : 0;
       return Math.min(1, avg * gain); // highs are quieter -> more gain
     };
-    return { bass: band(20, 150, 1.5), mid: band(150, 2000, 2.2), high: band(2000, 9000, 3.0) };
+    const k0 = Math.max(1, Math.round(150 / binHz)), k1 = Math.min(freq.length, Math.round(16000 / binHz));
+    let w = 0, o = 0, loud = 0;
+    for (let i = k0; i < k1; i++) { const m = ROOT[freq[i]]; w += m; o += m * Math.log2(i * binHz); if (freq[i] > loud) loud = freq[i]; }
+    return { bass: band(20, 150, 1.5), mid: band(150, 2000, 2.2), high: band(2000, 9000, 3.0), bright: loud > 60 ? o / w : 0 };
   }
 
   // ---- sound input (microphone / line-in) for live Auto: analysed only,
@@ -70,7 +119,7 @@ export class AudioEngine {
 
   /** Band levels of the sound input (zeros when it's off). */
   inputBands() {
-    return this._input ? this._bands(this._input.an, this._input.freq) : { bass: 0, mid: 0, high: 0 };
+    return this._input ? this._bands(this._input.an, this._input.freq) : { bass: 0, mid: 0, high: 0, bright: 0 };
   }
 
   get duration() { return this.buffer ? this.buffer.duration : 0; }
@@ -105,6 +154,7 @@ export class AudioEngine {
     this.source = this.ctx.createBufferSource();
     this.source.buffer = this.buffer;
     this.source.connect(this.analyser); // analyser -> destination (set up in ctor)
+    if (this.buffer.numberOfChannels > 1) this.source.connect(this._split);
     this._startCtxTime = this.ctx.currentTime;
     this.source.start(0, Math.min(this._startOffset, this.duration));
     this.playing = true;

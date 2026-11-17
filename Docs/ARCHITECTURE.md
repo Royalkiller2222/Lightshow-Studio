@@ -63,8 +63,10 @@ dt = clock.getDelta()
 transport.loopEnd = last cue end          // no track: free-run loops over the show
 transport.update(dt)                      // advance the master clock
 engine.setSelection(editTools.selected)   // feed the "Selection" group
-engine.auto?.update({beat, bands, dt})    // live Auto: song or sound-input bands,
-                                          // the song's beat (free-running when stopped)
+engine.auto?.update({beat, bands, lean, dt}) // live Auto: song or sound-input bands
+                                          // (with `bright`), the song's left/right
+                                          // lean, the song's beat (free-running when
+                                          // stopped); app.js sets auto.lanes / leanSign
 engine.update(transport.time, bpm, audio.bands())
     ├─ fixture cues → write to sink → _flush() merges to UniverseHub
     └─ laser cues   → _renderLaser() evaluates envelopes, drives the LaserRig
@@ -139,8 +141,10 @@ src/
                          jumps; writes engine.masters. Hosts the AutoPanel
                          above the pads (live.autoRoot).
     AutoPanel.js         Live Auto pad (A) + status/meter, and autoForm /
-                         bindAutoForm: the settings form shared with the dialog.
-    AutoShowDialog.js    "Pregenerate an Auto show": energy + sections + drops canvas,
+                         bindAutoForm: the settings form shared with the dialog
+                         (incl. the Follow sweeps / Follow sides switches).
+    AutoShowDialog.js    "Pregenerate an Auto show": energy + sections + drops canvas
+                         with the sweep line and side ticks under the bars,
                          the song-map editor (click a section: type, mood),
                          settings, Generate (app.js pregenerate() writes cues;
                          editSection() / resetSongMap() keep engine.songMap).
@@ -188,11 +192,21 @@ src/
 
   audio/
     AudioEngine.js       Web-Audio decode, play/pause/seek, peaks() for waveform,
-                         bands() (FFT bass/mid/high) for audio-reactive effects;
-                         startInput()/stopInput()/inputBands(): a mic or
-                         line-in on its own analyser (never played back).
-    bpm.js               analyzeTempo(): onset envelope + autocorrelation +
-                         parabolic interp + downbeat offset.
+                         bands() (FFT bass/mid/high + `bright`: the log
+                         centroid, for live sweeps) for audio-reactive effects;
+                         lean(): left/right balance of the playing song from
+                         two per-channel analysers behind a ChannelSplitter
+                         (0 for mono / quiet); startInput()/stopInput()/
+                         inputBands(): a mic or line-in on its own analyser
+                         (never played back).
+    fft.js               fftTables(n), fft(re, im): our radix-2 FFT, shared by
+                         bpm.js and auto/analyze.js. Pure.
+    bpm.js               analyzeTempo(buffer) -> { bpm, offset, confidence,
+                         alt, margin }: third-octave onsets (vs a 100 ms
+                         reference), period by multi-level repetition, folded
+                         to 0.01 BPM, half/double by beat energy, whole tempi
+                         preferred; beatOffsetAt(buffer, bpm) for ÷2 / ×2.
+                         Pure, Node-testable.
 
   import/                File imports. Pure; no DOM, no Three.js; Node-testable.
     zip.js               readZip(): read-only zip (central directory by hand,
@@ -230,7 +244,13 @@ src/
                          downbeatPhase(), findDrops() (bass + energy lift),
                          findSections() (novelty cuts on 4 bars anchored to
                          the first drop, builds by rising tension, kinds,
-                         repeat groups, moodOf()). Song map (5b):
+                         repeat groups, moodOf(); consecutive drops merge only
+                         when they sound alike). findSweeps(): the brightness
+                         (`tilt`, log centroid) smoothed, its long glides ->
+                         `sweeps` + a song-long `glide` curve (-1..1, 20 fps).
+                         findSides(): mid/side FFT -> per-band left/right lean
+                         above its slow average -> `sides` [{t0, t1, side,
+                         amount}] ([] for mono). Song map (5b):
                          normalizeSongMap / songMapFits / editAt and
                          applySongMap(an, map): the user's kind / mood edits
                          on top (renames, drop hits, `edited`, `moodSet`).
@@ -239,14 +259,23 @@ src/
                          weights), MOOD_PALETTES; generateShow() (phrase-
                          aligned cues, build risers, dark gap + unison drop
                          openings, hero drop, motifs on repeats, fill
-                         strobes; seeded = repeatable; returns cues, markers
-                         and the mood palettes it used) and LiveDirector
-                         (live: smoothed levels, drop / breakdown detection,
-                         bar changes, two virtual cues cueFor(i)).
+                         strobes; sweeps -> posY keys on every cue; one-sided
+                         sounds -> followSides() cuts an accent cue into that
+                         side's lane (A = left, B = right), or posX lean keys
+                         with one lane; look length scales with the tempo;
+                         seeded = repeatable; returns cues, markers and the
+                         mood palettes it used) and LiveDirector (live:
+                         smoothed levels, drop / breakdown detection, bar
+                         changes, two virtual cues cueFor(i) mapped through
+                         `lanes`; a live glide from `bands.bright` -> posY; a
+                         live side from `lean` -> the accent cue on that
+                         side, or posX).
 
   timeline/
     Transport.js         Master clock (audio time or free-run, looping at
-                         loopEnd), bpm, beatOffset.
+                         loopEnd), bpm, beatOffset (where bar 1 starts),
+                         byHand (the user set the tempo: kept when the same
+                         song loads again).
     TimelinePanel.js     The DAW-style timeline: ruler (bars, markers), song
                          waveform, named track rows (M/S, rename, select),
                          clips (move/resize/change track), curve lanes under
@@ -395,7 +424,7 @@ cue.anim = {
 ```
 { app:'lightshow-studio', version:5,
   room:{w,d,h},
-  settings:{ bpm, beatOffset, haze, brightness, house },
+  settings:{ bpm, beatOffset, tempoByHand?, haze, brightness, house },
   fixtures:[ { type, universe, startAddress, label, pos:[x,y,z], rot:[x,y,z], mirror:index|null, laser?:output } ],
   tracks:[ { name, kind, groupId, mute, solo, open, target?:[fixtureIndex…]|null, auto?:true } ],
   palettes:[ { id, name, colors:[[r,g,b]…] } ],
@@ -403,7 +432,7 @@ cue.anim = {
   cues:[ { kind:'laser', pattern, start, duration, track:index, params, anim?, colorRef?, text?, fps? }
        | { kind:'fixture', name, groupId, start, duration, track:index, layers:[{effectKey, params}] } ],
   markers:[ { t, name, auto?:true } ],
-  auto:{ intensity, every, palette, groups, imported, alternate, markers, source, mood },
+  auto:{ intensity, every, palette, groups, imported, alternate, sweeps, stereo, markers, source, mood },
   songMap?:{ song:{ name, duration }, edits:[ { t, kind?, mood? } ] },
   audioName }
 ```

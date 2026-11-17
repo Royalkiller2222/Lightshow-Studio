@@ -80,7 +80,7 @@ export function serializeProject(ctx) {
     app: 'lightshow-studio', version: PROJECT_VERSION,
     room: { w: room.size.width, d: room.size.depth, h: room.size.height },
     settings: {
-      bpm: transport.bpm, beatOffset: transport.beatOffset,
+      bpm: transport.bpm, beatOffset: transport.beatOffset, tempoByHand: transport.byHand || undefined,
       haze: atmosphere.haze, brightness: atmosphere.brightness, house: atmosphere.house,
     },
     fixtures: patch.entries.map((e) => {
@@ -208,6 +208,7 @@ export function applyProject(ctx, data, { keepTransport = false } = {}) {
   const s = data.settings || {};
   if (Number.isFinite(s.bpm)) transport.bpm = s.bpm;
   if (Number.isFinite(s.beatOffset)) transport.beatOffset = s.beatOffset;
+  transport.byHand = s.tempoByHand === true;
   if (Number.isFinite(s.haze)) atmosphere.setHaze(s.haze);
   if (Number.isFinite(s.brightness)) atmosphere.setBrightness(s.brightness);
   if (typeof s.house === 'boolean') atmosphere.setHouse(s.house);

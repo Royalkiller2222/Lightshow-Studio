@@ -14,60 +14,24 @@
 //   - fills (a burst of hits on a phrase's last beat), repeats (the chorus
 //     coming back) and a mood per section: energy × dark/bright → euphoric,
 //     aggressive, dreamy or dark
+//   - sweeps: a filter opening and closing, a riser, a falling note — the
+//     sound's brightness gliding up or down. Auto moves the lasers with them
+//   - one-sided sounds: a lead or an effect that sits clearly left or right
+//     in the stereo picture for a moment. Auto changes only that side's lasers
 //
-// Cheap on purpose: one 1024-point FFT per 23 ms frame (our own radix-2, no
-// dependency) plus two one-pole filters; everything else is per-bar averages
-// on the song's beat grid. Values are normalised to the song itself (its loud
-// parts ≈ 1), so a quiet master and a loud one give the same show.
+// Cheap on purpose: one 1024-point FFT per 23 ms frame (two for a stereo
+// song: mid and side; our own radix-2 in src/audio/fft.js, no dependency)
+// plus two one-pole filters; everything else is per-bar averages on the
+// song's beat grid and two passes over the frames. Values are normalised to the
+// song itself (its loud parts ≈ 1), so a quiet master and a loud one give the
+// same show.
 //
 // Works on anything shaped like an AudioBuffer: { sampleRate, length,
 // numberOfChannels, getChannelData() }. No DOM; Node-testable.
 
+import { fft, fftTables } from '../audio/fft.js';
+
 const HOP = 1024; // samples per analysis frame (~23 ms at 44.1 kHz); also the FFT size
-
-// ------------------------------------------------------------------ FFT
-
-const fftCache = new Map();
-function fftTables(n) {
-  let t = fftCache.get(n);
-  if (t) return t;
-  const bits = Math.log2(n);
-  const rev = new Uint32Array(n);
-  for (let i = 0; i < n; i++) {
-    let r = 0;
-    for (let b = 0; b < bits; b++) r |= ((i >> b) & 1) << (bits - 1 - b);
-    rev[i] = r;
-  }
-  const cos = new Float64Array(n / 2), sin = new Float64Array(n / 2);
-  for (let i = 0; i < n / 2; i++) { cos[i] = Math.cos((-2 * Math.PI * i) / n); sin[i] = Math.sin((-2 * Math.PI * i) / n); }
-  const win = new Float32Array(n);
-  for (let i = 0; i < n; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1)); // Hann
-  t = { rev, cos, sin, win };
-  fftCache.set(n, t);
-  return t;
-}
-
-/** In-place iterative radix-2 FFT of (re, im); n a power of two. */
-export function fft(re, im) {
-  const n = re.length;
-  const { rev, cos, sin } = fftTables(n);
-  for (let i = 0; i < n; i++) {
-    const j = rev[i];
-    if (j > i) { let x = re[i]; re[i] = re[j]; re[j] = x; x = im[i]; im[i] = im[j]; im[j] = x; }
-  }
-  for (let size = 2; size <= n; size *= 2) {
-    const half = size / 2, step = n / size;
-    for (let s = 0; s < n; s += size) {
-      for (let k = 0; k < half; k++) {
-        const c = cos[k * step], si = sin[k * step];
-        const a = s + k, b = a + half;
-        const tr = re[b] * c - im[b] * si, ti = re[b] * si + im[b] * c;
-        re[b] = re[a] - tr; im[b] = im[a] - ti;
-        re[a] += tr; im[a] += ti;
-      }
-    }
-  }
-}
 
 // ------------------------------------------------------- frame features
 
@@ -80,11 +44,19 @@ export const BANDS = [
   { key: 'air', lo: 10000, hi: 22050 },
 ];
 
+/** The bands the left/right balance is read in (bass is mono in almost every mix). */
+const SIDE_BANDS = BANDS.slice(1);
+
 /**
  * Frame features at sr/HOP fps (Float32Arrays): rms, bass, high, onset (the
  * cheap filters) and from the FFT: one array per BANDS key, centroid (Hz),
  * fluxLo / fluxHi (spectral flux below 250 Hz / above 2 kHz — kicks / snares
- * and hats), flat (spectral flatness above 2 kHz: ~0 tonal, → 1 noise).
+ * and hats), flat (spectral flatness above 2 kHz: ~0 tonal, → 1 noise),
+ * tilt (how bright the frame sounds, in octaves: the centre of its spectrum
+ * from 150 Hz to 16 kHz on a log-frequency axis, each bin weighted by the
+ * square root of its magnitude so a loud bass note doesn't pin it down; 0 =
+ * silent) and, for a stereo song, left / right: one array per SIDE_BANDS band
+ * with that channel's level (null for mono).
  */
 export function frameFeatures(buffer) {
   const sr = buffer.sampleRate;
@@ -93,19 +65,24 @@ export function frameFeatures(buffer) {
   const b = chs > 1 ? buffer.getChannelData(1) : null;
   const n = Math.floor(a.length / HOP);
   const arr = () => new Float32Array(n);
-  const F = { rms: arr(), bass: arr(), high: arr(), onset: arr(), centroid: arr(), fluxLo: arr(), fluxHi: arr(), flat: arr(), fps: sr / HOP };
+  const F = { rms: arr(), bass: arr(), high: arr(), onset: arr(), centroid: arr(), fluxLo: arr(), fluxHi: arr(), flat: arr(), tilt: arr(),
+    left: b ? SIDE_BANDS.map(arr) : null, right: b ? SIDE_BANDS.map(arr) : null, fps: sr / HOP };
   for (const band of BANDS) F[band.key] = arr();
   // one-pole low-passes: ~150 Hz (bass) and ~2.5 kHz (highs = signal − that)
   const kB = 1 - Math.exp((-2 * Math.PI * 150) / sr);
   const kH = 1 - Math.exp((-2 * Math.PI * 2500) / sr);
   const { win } = fftTables(HOP);
   const re = new Float64Array(HOP), im = new Float64Array(HOP);
+  const sre = new Float64Array(HOP), sim = new Float64Array(HOP); // the side signal (L − R) / 2
   const H = HOP / 2;
   const mag = new Float32Array(H), prevMag = new Float32Array(H);
   const binHz = sr / HOP;
   const bin = (hz) => Math.max(1, Math.min(H, Math.round(hz / binHz)));
   const bandBins = BANDS.map((x) => [bin(x.lo), bin(x.hi)]);
-  const k250 = bin(250), k2k = bin(2000);
+  const k250 = bin(250), k2k = bin(2000), k150 = bin(150), k16k = bin(16000);
+  const sideBins = SIDE_BANDS.map((x) => [bin(x.lo), bin(Math.min(x.hi, 16000))]);
+  const octave = new Float32Array(H);
+  for (let k = 1; k < H; k++) octave[k] = Math.log2(k * binHz);
   let lpB = 0, lpH = 0, prev = 0;
   for (let f = 0; f < n; f++) {
     let s2 = 0, b2 = 0, h2 = 0;
@@ -118,6 +95,7 @@ export function frameFeatures(buffer) {
       s2 += s * s; b2 += lpB * lpB; h2 += hi * hi;
       re[j] = s * win[j];
       im[j] = 0;
+      if (b) { sre[j] = (a[o + j] - b[o + j]) * 0.5 * win[j]; sim[j] = 0; }
     }
     F.rms[f] = Math.sqrt(s2 / HOP);
     F.bass[f] = Math.sqrt(b2 / HOP);
@@ -126,7 +104,21 @@ export function frameFeatures(buffer) {
     prev = F.rms[f];
 
     fft(re, im);
-    let sm = 0, smf = 0, fl = 0, fh = 0, logSum = 0, linSum = 0;
+    if (b) {
+      // left = mid + side, right = mid − side, bin by bin (before `re` is reused)
+      fft(sre, sim);
+      sideBins.forEach(([lo, hi], i) => {
+        let l2 = 0, r2 = 0;
+        for (let k = lo; k < hi; k++) {
+          const lr = re[k] + sre[k], li = im[k] + sim[k], rr = re[k] - sre[k], ri = im[k] - sim[k];
+          l2 += lr * lr + li * li;
+          r2 += rr * rr + ri * ri;
+        }
+        F.left[i][f] = Math.sqrt(l2) / HOP;
+        F.right[i][f] = Math.sqrt(r2) / HOP;
+      });
+    }
+    let sm = 0, smf = 0, fl = 0, fh = 0, logSum = 0, linSum = 0, tw = 0, to = 0;
     for (let k = 1; k < H; k++) {
       const m = Math.sqrt(re[k] * re[k] + im[k] * im[k]) / HOP;
       mag[k] = m;
@@ -134,9 +126,11 @@ export function frameFeatures(buffer) {
       const d = m - prevMag[k];
       if (d > 0) { if (k < k250) fl += d; else if (k >= k2k) fh += d; }
       if (k >= k2k) { logSum += Math.log(m + 1e-9); linSum += m; }
+      if (k >= k150 && k < k16k) { const w = Math.sqrt(m); tw += w; to += w * octave[k]; }
       prevMag[k] = m;
     }
     F.centroid[f] = sm > 1e-9 ? (smf / sm) * binHz : 0;
+    F.tilt[f] = tw > 1e-6 ? to / tw : 0;
     F.fluxLo[f] = fl;
     F.fluxHi[f] = fh;
     const nh = H - k2k;
@@ -147,6 +141,15 @@ export function frameFeatures(buffer) {
       F[BANDS[i].key][f] = Math.sqrt(e);
     });
   }
+  return F;
+}
+
+// The FFT pass is the slow part (about a second for a long song) and doesn't
+// depend on the grid: keep it per buffer, so a tempo change re-reads instantly.
+const heard = new WeakMap();
+function features(buffer) {
+  let F = heard.get(buffer);
+  if (!F) { F = frameFeatures(buffer); heard.set(buffer, F); }
   return F;
 }
 
@@ -174,18 +177,19 @@ export function moodOf(energy, bright) {
 /**
  * Analyse a decoded song on its beat grid.
  * Returns { bpm, offset, barLen, duration, phase (beats the bar grid was
- *           moved so drops land on "one"),
+ *           moved so drops land on "one"), first (seconds: the first downbeat),
  *   bars:  [{ t, energy, bass, high, busy, bright, noise, rate, tension, fill, vec }],
  *   beats: [{ t, bass }],                                  (per beat, 0..1)
  *   drops: [{ bar, t, strength }],
  *   sections: [{ t, end, bar0, bar1, kind, name, energy, bright, tension,
- *                mood, group, repeat, hit }] }
+ *                mood, group, repeat, hit }],
+ *   sweeps, glide (see findSweeps), sides (see findSides) }
  * `hit` = the section starts on a detected drop; `group` = sections that
  * sound alike share a number, `repeat` = how many times it came before.
  */
 export function analyzeSong(buffer, { bpm = 120, offset = 0 } = {}) {
   const duration = buffer.length / buffer.sampleRate;
-  const F = frameFeatures(buffer);
+  const F = features(buffer);
   const beatLen = 60 / (bpm || 120);
   const barLen = beatLen * 4;
   const avg = (arr, t0, t1) => {
@@ -208,7 +212,7 @@ export function analyzeSong(buffer, { bpm = 120, offset = 0 } = {}) {
 
   // ---- which beat is "one": drops (bass slamming back in) land on downbeats
   const phase = downbeatPhase(beats, offset, beatLen);
-  const first = ((((offset + phase * beatLen) % barLen) + barLen) % barLen);
+  const first = phase || offset < 0 || offset >= barLen ? ((((offset + phase * beatLen) % barLen) + barLen) % barLen) : offset;
 
   // ---- hits: peaks of the high flux (snares, claps, hats)
   const thrHi = 1.5 * pct(F.fluxHi, 0.5, 0);
@@ -269,7 +273,191 @@ export function analyzeSong(buffer, { bpm = 120, offset = 0 } = {}) {
 
   const drops = findDrops(bars);
   const sections = findSections(bars, duration, drops);
-  return { bpm, offset, barLen, duration, phase, bars, beats: beats.map(({ t, bass }) => ({ t, bass })), drops, sections };
+  const { sweeps, glide } = findSweeps(F, beatLen);
+  const sides = findSides(F);
+  return { bpm, offset, barLen, duration, phase, first, bars, beats: beats.map(({ t, bass }) => ({ t, bass })), drops, sections, sweeps, glide, sides };
+}
+
+// ------------------------------------------------------------- sweeps
+
+const SWEEP_MIN = 0.7;    // octaves: a smaller glide is the mix breathing, not a sweep
+const SWEEP_SHORT = 0.4;  // seconds: a faster one is a cut or a hit, not a sweep
+const SWEEP_LONG = 12;    // seconds: a slower one is the song changing, not a sweep
+const SWEEP_FAST = 4;     // octaves a second: steeper is a hard cut smeared by the smoothing
+const SWEEP_FULL = 1;     // octaves that swing the lasers (nearly) all the way
+const GLIDE_HOLD = 6;     // seconds: how long a sweep's swing lasts while sweeps keep coming
+const GLIDE_HOME = 2;     // beats: how fast the lasers drift home once nothing sweeps
+const GLIDE_FPS = 20;     // the movement curve's resolution
+
+/** Median of the n frames around each frame (hats and clicks are shorter than that). */
+function medianFilter(src, n) {
+  const out = new Float32Array(src.length), h = n >> 1, w = [];
+  for (let i = 0; i < src.length; i++) {
+    w.length = 0;
+    for (let j = Math.max(0, i - h); j <= Math.min(src.length - 1, i + h); j++) w.push(src[j]);
+    w.sort((x, y) => x - y);
+    out[i] = w[w.length >> 1];
+  }
+  return out;
+}
+
+function boxFilter(src, n) {
+  const out = new Float32Array(src.length), h = n >> 1;
+  let s = 0, c = 0;
+  for (let i = 0; i < Math.min(h, src.length); i++) { s += src[i]; c++; }
+  for (let i = 0; i < src.length; i++) {
+    if (i + h < src.length) { s += src[i + h]; c++; }
+    if (i - h - 1 >= 0) { s -= src[i - h - 1]; c--; }
+    out[i] = s / c;
+  }
+  return out;
+}
+
+/**
+ * Sweeps: stretches where the sound's brightness (frame tilt) glides at least
+ * SWEEP_MIN octaves one way — a filter opening or closing, a riser, a note
+ * falling away. Returns
+ *   sweeps: [{ t0, t1, dir: 1 up | -1 down, span (octaves) }]
+ *   glide:  { fps, v: Float32Array } the movement that copies them, −1..1:
+ *           0 at rest; each sweep moves it by its own glide (a filter that
+ *           opens and closes takes the lasers up and back), and it drifts
+ *           home — slowly while sweeps keep coming, within a bar or two once
+ *           they stop — so a big sweep never parks the lasers at the edge.
+ * Quiet passages count too (a faint swoosh still sweeps), silence doesn't.
+ */
+export function findSweeps(F, beatLen = 0.5) {
+  const n = F.tilt.length;
+  const glide = { fps: GLIDE_FPS, v: new Float32Array(Math.ceil((n / F.fps) * GLIDE_FPS) + 1) };
+  if (n < 8) return { sweeps: [], glide };
+  // silence has no brightness: hold the last one heard
+  const quiet = 0.02 * pct(F.rms, 0.9, 0);
+  const s0 = new Float32Array(n);
+  let last = 0;
+  for (let i = 0; i < n; i++) if (F.tilt[i] > 0 && F.rms[i] > quiet) { last = F.tilt[i]; break; }
+  for (let i = 0; i < n; i++) { if (F.tilt[i] > 0 && F.rms[i] > quiet) last = F.tilt[i]; s0[i] = last; }
+  const s = boxFilter(medianFilter(s0, Math.max(3, Math.round(0.2 * F.fps) | 1)), Math.max(3, Math.round(0.15 * F.fps) | 1));
+
+  // turning points: the curve has to come back SWEEP_MIN from an extreme
+  // before that extreme counts (a zigzag), so wiggles inside a sweep don't end it
+  const piv = [0];
+  let dir = 0, ext = 0;
+  for (let i = 1; i < n; i++) {
+    if (dir >= 0 && s[i] > s[ext]) ext = i;
+    else if (dir <= 0 && s[i] < s[ext]) ext = i;
+    if (dir === 0) {
+      if (Math.abs(s[i] - s[piv[0]]) >= SWEEP_MIN) { dir = s[i] > s[piv[0]] ? 1 : -1; ext = i; }
+    } else if ((s[ext] - s[i]) * dir >= SWEEP_MIN) {
+      piv.push(ext);
+      dir = -dir;
+      ext = i;
+    }
+  }
+  if (dir !== 0 && ext !== piv[piv.length - 1]) piv.push(ext);
+
+  // legs between turning points; a leg starts where the curve leaves its
+  // turning point for good (it may rest there for a while first)
+  const legs = [];
+  for (let k = 0; k + 1 < piv.length; k++) {
+    const i1 = piv[k + 1], d = s[i1] - s[piv[k]];
+    let i0 = i1;
+    while (i0 > piv[k] && Math.abs(s[i0 - 1] - s[piv[k]]) > 0.12 * Math.abs(d)) i0--;
+    i0 = Math.max(piv[k], i0 - 1);
+    const dur = (i1 - i0) / F.fps;
+    legs.push({ p0: piv[k], i0, i1, d, ok: Math.abs(d) >= SWEEP_MIN && dur >= SWEEP_SHORT && dur <= SWEEP_LONG && Math.abs(d) <= SWEEP_FAST * dur });
+  }
+  const sweeps = legs.filter((l) => l.ok).map((l) => ({
+    t0: r3s(l.i0 / F.fps), t1: r3s(l.i1 / F.fps), dir: l.d > 0 ? 1 : -1, span: r3s(Math.abs(l.d)),
+  }));
+
+  // the movement curve: inside a sweep it moves as the brightness does;
+  // all the time it leaks home (a soft limit instead of a hard stop keeps
+  // movement visible after a very big sweep)
+  const inLeg = new Uint8Array(n);
+  for (const l of legs) if (l.ok) inLeg.fill(1, l.i0 + 1, l.i1 + 1);
+  const kIn = Math.exp(-1 / (GLIDE_HOLD * F.fps)), kOut = Math.exp(-1 / (GLIDE_HOME * beatLen * F.fps));
+  const raw = new Float32Array(n);
+  let g = 0;
+  for (let i = 1; i < n; i++) {
+    g = inLeg[i] ? Math.max(-1.5, Math.min(1.5, g * kIn + (s[i] - s[i - 1]) / SWEEP_FULL)) : g * kOut;
+    raw[i] = Math.tanh(g);
+  }
+  const curve = boxFilter(raw, Math.max(3, Math.round(0.3 * F.fps) | 1));
+  for (let j = 0; j < glide.v.length; j++) {
+    const x = (j / GLIDE_FPS) * F.fps, i = Math.min(n - 1, Math.floor(x)), f = x - i;
+    glide.v[j] = i + 1 < n ? curve[i] + (curve[i + 1] - curve[i]) * f : curve[i];
+  }
+  return { sweeps, glide };
+}
+
+const r3s = (v) => Math.round(v * 1000) / 1000;
+
+// ------------------------------------------------------- one-sided sounds
+
+const SIDE_ON = 0.2;      // how far the balance has to lean to start a one-sided moment…
+const SIDE_OFF = 0.08;    // …and how far back it has to come to end it ("normal stereo")
+const SIDE_MIN = 0.3;     // seconds: shorter is a ping-pong hat, not a part on one side
+const SIDE_GAP = 0.2;     // seconds: two moments on one side this close are one
+
+/**
+ * One-sided sounds: moments when what is playing above the bass sits clearly
+ * left or right. Per frame the balance (right − left) / (right + left) is
+ * read in each SIDE_BANDS band, weighted by how loud that band is compared to
+ * its own loud level (so a panned hat counts although hats are quiet), minus
+ * the mix's own slow lean (a guitar parked on the left all song is "normal").
+ * Returns [{ t0, t1, side: 'L' | 'R', amount (0..1, the peak lean) }].
+ */
+export function findSides(F) {
+  if (!F.left) return [];
+  const n = F.rms.length, nb = F.left.length;
+  const sm = Math.max(3, Math.round(0.1 * F.fps) | 1);
+  const L = F.left.map((x) => boxFilter(x, sm)), R = F.right.map((x) => boxFilter(x, sm));
+  const ref = L.map((_, i) => {
+    const sum = new Float32Array(n);
+    for (let f = 0; f < n; f++) sum[f] = L[i][f] + R[i][f];
+    return pct(sum, 0.9, 0);
+  });
+  const lean = new Float32Array(n), loud = new Float32Array(n);
+  for (let f = 0; f < n; f++) {
+    let d = 0, w = 0;
+    for (let i = 0; i < nb; i++) {
+      if (!(ref[i] > 0)) continue;
+      d += (R[i][f] - L[i][f]) / ref[i];
+      w += (R[i][f] + L[i][f]) / ref[i];
+    }
+    loud[f] = w / nb;
+    lean[f] = w > 1e-6 ? d / w : 0;
+  }
+  // the mix's own lean: the median over ±8 s, read once a second
+  const step = Math.max(1, Math.round(F.fps)), half = Math.round(8 * F.fps);
+  const slow = [];
+  for (let c = 0; c < n; c += step) {
+    const w = [];
+    for (let j = Math.max(0, c - half); j < Math.min(n, c + half); j += 2) if (loud[j] > 0.1) w.push(lean[j]);
+    w.sort((x, y) => x - y);
+    slow.push(w.length ? w[w.length >> 1] : 0);
+  }
+  for (let f = 0; f < n; f++) lean[f] -= slow[Math.min(slow.length - 1, Math.floor(f / step))];
+
+  const out = [];
+  let cur = null;
+  const close = (f) => {
+    cur.t1 = f / F.fps;
+    const prev = out[out.length - 1];
+    if (prev && prev.side === cur.side && cur.t0 - prev.t1 <= SIDE_GAP) { prev.t1 = cur.t1; prev.amount = Math.max(prev.amount, cur.amount); }
+    else out.push(cur);
+    cur = null;
+  };
+  for (let f = 0; f < n; f++) {
+    const v = lean[f], a = Math.abs(v);
+    if (cur) {
+      const same = (v > 0) === (cur.side === 'R');
+      if (!same || a < SIDE_OFF || loud[f] < 0.1) close(f);
+      else cur.amount = Math.max(cur.amount, a);
+    }
+    if (!cur && a >= SIDE_ON && loud[f] >= 0.2) cur = { t0: f / F.fps, t1: 0, side: v > 0 ? 'R' : 'L', amount: a };
+  }
+  if (cur) close(n);
+  return out.filter((x) => x.t1 - x.t0 >= SIDE_MIN).map((x) => ({ t0: r3s(x.t0), t1: r3s(x.t1), side: x.side, amount: r3s(Math.min(1, x.amount)) }));
 }
 
 /**
@@ -323,6 +511,7 @@ export function findDrops(bars) {
 }
 
 const dist = (a, b) => Math.sqrt(a.reduce((s, x, i) => s + (x - b[i]) ** 2, 0) / a.length);
+const SAME_DROP = 0.18; // sound distance: phrases of one drop are ~0.1 apart, a new part 0.2+
 const meanVec = (rows) => rows[0].map((_, i) => mean(rows.map((r) => r[i])));
 
 /**
@@ -411,7 +600,8 @@ export function findSections(bars, duration, drops = []) {
   // a drop that runs on past a cut is still the same drop
   for (let i = secs.length - 1; i > 0; i--) {
     const a = secs[i - 1], b = secs[i];
-    if (a.kind === 'drop' && b.kind === 'drop' && !b.hit && b.bar1 - a.bar0 <= 32) {
+    // (unless it turns into something that sounds clearly different: that's a new part)
+    if (a.kind === 'drop' && b.kind === 'drop' && !b.hit && b.bar1 - a.bar0 <= 32 && dist(a.vec, b.vec) < SAME_DROP) {
       const wa = a.bar1 - a.bar0, wb = b.bar1 - b.bar0;
       a.energy = (a.energy * wa + b.energy * wb) / (wa + wb);
       a.bright = (a.bright * wa + b.bright * wb) / (wa + wb);

@@ -159,13 +159,39 @@ bug or a constraint we already dealt with.
   launches with a working show" is a core promise. With a track loaded the audio
   clock rules and stops at the track's end as before.
 
-### Auto-BPM: onset autocorrelation + parabolic interpolation
-- **Decision:** `src/audio/bpm.js` builds a rectified energy-onset envelope
-  (~200 fps), autocorrelates over 70–180 BPM, then **parabolic-interpolates the
-  peak** for sub-BPM precision, and finds a downbeat offset.
-- **Why:** Integer-frame autocorrelation lag quantizes badly at higher tempos
-  (128→126.5). Parabolic interpolation on the peak recovers ~±1 BPM. The downbeat
-  offset aligns the beat grid and cue snapping to the actual music.
+### Auto-BPM: band onsets, repetition, folding (rebuilt in v0.17.0)
+- **Decision:** `src/audio/bpm.js` `analyzeTempo()` works in five steps (the
+  file's header has the detail): onsets per third-octave band, each compared
+  with the last 100 ms; a beat period (70–180 BPM) scored by how well the
+  song repeats after 1, 2, 4, 8 and 16 of it; the song folded onto that
+  period to sharpen it to about 0.01 BPM; half / double / other relatives
+  chosen by the energy on the beats; whole tempi preferred when they fold
+  just as sharply. It returns `{ bpm, offset, confidence, alt, margin }`.
+- **Why it replaced the old one** (energy-onset autocorrelation + parabolic
+  interpolation, ~±1 BPM): tuning Auto on a real track showed that
+  everything else stands on the grid. One BPM off drifts a bar within a
+  minute, and a full-band energy envelope takes a wobbling synth or a
+  tremolo for a drum roll. Comparing each band with a 100 ms window instead
+  of the previous frame is what stops that.
+- **Half/double is a judgement call, so the user gets buttons.** 82 and 164
+  both fit the same music. The detector picks one and reports the runner-up
+  (`alt`, `margin`); when it's close, the "Loaded" message says so, and
+  **÷2 / ×2** sit next to the BPM. They find the beat again for the new
+  tempo (`beatOffsetAt`).
+- **Bar 1 = the first downbeat.** After detection, `alignBars()` moves
+  `beatOffset` to the analysis's drop-anchored bar start, so the ruler's bar
+  numbers match the music and Auto's bars. The inspector field is called
+  "Bar 1 starts at" for the same reason.
+- **A hand-set tempo wins for its song.** Typing a BPM, ÷2 / ×2 or editing
+  "Bar 1 starts at" sets `transport.byHand` (saved as `tempoByHand`).
+  Loading the same song again (opening a show, then its song) keeps it;
+  another song is detected fresh.
+- **The window blocks for a second or two** while it listens, so a
+  "Listening to…" message is shown and painted first. No worker: the
+  analysis is pure and fast enough, and a worker would need the samples
+  copied or transferred.
+- **Don't undo:** the 100 ms reference window, and trying the relatives
+  (step 4). Both were added for failures on real music.
 
 ### Timeline window grows to fit cues (so resize grips stay reachable)
 - **Decision:** With no audio, the timeline window = `max(30, longestCueEnd + 4)`.
@@ -387,6 +413,8 @@ curves live under the track"; these rules carried over unchanged.)
   what's playing.
 - **Repeatable takes:** generation is seeded (mulberry32); same song + settings
   + seed = same show. Each "new take" uses the next seed.
+- **Pairs (3c: odd / even projectors; since v0.17.0: left / right of the
+  stage, see "Sweeps and one-sided sounds").**
 - **Cheap analysis, no FFT (3c; replaced in 5a, see below):** two one-pole filters split bass/highs; bars and
   beats come from the detected BPM grid. A 4-minute song analyses in well under
   a second, and values are normalised to the song's own loud bars, so quiet and
@@ -414,7 +442,8 @@ curves live under the track"; these rules carried over unchanged.)
   the last 16/8/4 bars before a drop whose tension climbs quarter by quarter
   and which don't start louder than they end. That second check stops a
   build from swallowing the tail of the previous drop.
-- **Drops anchor the grid.** Auto-BPM's downbeat can be a beat off; drops are
+- **Drops anchor the grid** (since v0.17.0 the timeline's bar 1 follows too,
+  see "Auto-BPM"). Auto-BPM's downbeat can be a beat off; drops are
   the most reliable bar ones in dance music, so beat-level bass lifts vote on
   the phase (only moved with ≥ 60% of votes), and section cuts snap to the
   4-bar grid counted from the first drop.
@@ -436,6 +465,74 @@ curves live under the track"; these rules carried over unchanged.)
 - **Mood palettes are added to the show when used,** as ordinary palettes,
   so cues can reference them, they save and undo, and the user can edit
   them. Live Auto keeps its own three (Ice / Fire / Club).
+
+### Sweeps and one-sided sounds (v0.17.0)
+The user asked for two things after hearing Auto on their own track: "analyze
+when audio sweeps, and copy that in laser sweeping", and "if one sound is
+mainly happening on one side, change only one laser until it returns to
+normal stereo".
+- **A sweep is the brightness gliding.** Per frame, `tilt` is the
+  log-frequency centroid (in octaves, 150 Hz–16 kHz); silence holds the last
+  value. After smoothing, a leg between two turning points is a sweep when
+  it travels ≥ 0.7 octave in 0.4–12 s and no faster than 4 octaves a second
+  (steeper is a hard cut between sections, smeared by the smoothing).
+- **The glide is a leaky integral, not the brightness itself.** The lasers
+  shouldn't sit high just because a section is bright. Inside a sweep the
+  glide adds the change (1 octave ≈ full travel, through tanh so it can't
+  stick at the limit); outside it drifts home in about 2 beats. So a filter
+  opening raises the pictures, and they come back when it stops.
+- **Sweeps move every picture up and down** (`posY`), both sides together.
+  Position is the one Key Effect Auto didn't already use, it reads as
+  "sweeping" in the room, and up = brighter matches how people describe
+  pitch and filters. Depth follows Intensity (0.3 / 0.45 / 0.6 of the
+  field). Pregenerate writes simplified keys onto each cue, so the user
+  can see and edit them.
+- **One-sided = clearly off the song's own balance.** A mid/side FFT gives
+  left and right levels per band above 250 Hz (bass is mono in practice and
+  would drown the rest). Each band's lean is normalised by its own loud
+  level, and the song's slow lean (median over ±8 s) is subtracted, so a
+  mix that sits slightly left everywhere isn't one long "left" moment.
+  Hysteresis (on 0.2, off 0.08) and a minimum length keep it from
+  chattering.
+- **Pairs = stage sides.** Lanes used to be odd / even projectors. To
+  change "the left laser", lane A is now the projectors left of the rig's
+  middle and lane B the ones right of it (centre-line projectors take
+  turns), and the tracks are named Auto Left / Auto Right. Projectors all
+  in one line front to back have no sides and keep odd / even (Auto A / B).
+- **Left is the audience's left, and the left channel.** The audience
+  stands on +z looking at the rig, which is also the camera's home view. A
+  projector's own picture can be mirrored relative to that (it may face the
+  other way), so the lean is multiplied by the sign of the projector's
+  world x axis (`leanSign`).
+- **Two lanes → an accent cue; one lane → a lean.** With a lane per side,
+  "change only one laser" is literal: the side's cue is cut, a short accent
+  (another pattern, brighter, the next palette colour) plays for the sound,
+  and the cut look resumes exactly where it would have been (envelopes are
+  sliced, the palette runs on song beats). With one projector or Pairs off
+  there is no "one laser" to change, so the picture leans towards the sound
+  (`posX`) and returns. Same-side sounds closer than half a beat merge, so
+  the old look doesn't flicker between them.
+- **Ordinary cues again.** Accents and Position keys are plain cues and
+  envelopes: editable, saved, undone, and played without the analyser.
+- **Live Auto has its own, simpler versions**, because it only hears now:
+  the glide is fast brightness minus slow brightness (past a dead zone);
+  a side is the lean of two per-channel analysers against its own slow
+  average. Sound input is mixed to one analyser, so it follows sweeps only.
+- **Two switches, both on by default** (Follow sweeps, Follow sides; Pro in
+  Live, always in the dialog). The dialog draws what was heard under the
+  energy chart, so the user can see why the lasers moved before generating.
+- **Look length follows the tempo.** "With the music" used to mean a fixed
+  number of bars. On an 82 BPM track a bar is almost 3 s, and looks held
+  twice as long as intended. The bar counts are now scaled by a power of
+  two against a 1.875 s reference bar (128 BPM). A chosen "every N bars"
+  is left alone.
+- **Drops merge only when they sound alike.** Two drops in a row with a
+  different sound (distance ≥ 0.18 between their feature vectors) stay
+  separate sections with their own looks; phrases of one drop are about
+  0.1 apart.
+- **Tuned on one real track so far.** The thresholds above were set on it
+  and on the synthetic test song. Expect to revisit them as more songs
+  arrive.
 
 ### The song map (Stage 5b, v0.15.0)
 - **Correct the analysis, don't replace it.** Rules get real songs wrong

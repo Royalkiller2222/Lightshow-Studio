@@ -35,9 +35,21 @@ each part:
 Sections that repeat (the second chorus or drop) are recognised, so they get
 a matching look. Hover a chip to see its time and **mood**.
 
-Below the chips, a summary line counts the sections, drops and bars, and
-shows the BPM. **If the grid looks off, check the BPM in the top bar first.**
-Auto needs the right tempo to find the bars.
+Under the bars, a thin strip shows the two other things Auto follows:
+
+- **The line** is for **sweeps**. It rises while the sound gets brighter (a
+  filter opening, a riser) and falls while it gets duller (a note sliding
+  away, a filter closing). It rests in the middle when the sound is steady.
+- **The ticks** are **sounds on one side**. A tick in the upper half is a
+  sound that plays mostly on the left; in the lower half, on the right.
+
+The line and the ticks dim when you turn their switch off (see
+[Settings](#settings)).
+
+Below the chips, a summary line counts the sections, drops, bars, sweeps and
+one-sided sounds, and shows the BPM. **If the bars look twice too long or
+too short, press ÷2 or ×2 next to the BPM in the top bar.** Auto needs the
+right tempo to find the bars.
 
 ### Correcting the sections
 
@@ -69,15 +81,24 @@ song: a different song starts with a clean map.
 | **Change** | **With the music** (often in drops, rarely in calm parts) or every 1, 2, 4 or 8 bars |
 | **Colours** | **By mood** (Sunrise, Acid, Dream, Deep; live Auto uses Ice, Fire and Club) or one of your palettes |
 | **Patterns** | Which groups Auto may use: Beams, Shapes, Waves, Graphics, and Imported if you have ILDA files. Text is never used |
-| **Pairs** | With two or more projectors: odd and even projectors get different patterns, spinning opposite ways |
+| **Pairs** | With two or more projectors: the projectors on the left and the ones on the right get different patterns, spinning opposite ways |
+| **Follow sweeps** | When the sound sweeps brighter or duller, every picture glides up or down with it, then settles back |
+| **Follow sides** | When a sound plays mostly on one side, only the lasers on that side change, until the sound is back in the middle. This needs two or more projectors and **Pairs**; otherwise the picture leans towards the sound instead |
 | **Markers** | Adds a marker for each section, which become pads in Live |
 
 ### Generate
 
 Click **Generate**. Auto adds an **Auto** laser track at the top of the
-timeline. With **Pairs** it adds two: **Auto A** and **Auto B**. The track
-plays over your other laser tracks. Every cue is an ordinary laser cue that
-you can edit, move or delete.
+timeline. With **Pairs** it adds two: **Auto Left** and **Auto Right**, one
+for the projectors on each side of the stage. The tracks play over your
+other laser tracks. Every cue is an ordinary laser cue that you can edit,
+move or delete.
+
+Left and right are the audience's: standing in front of the stage, facing
+the projectors, which is the view the app opens with. The song's left
+channel is the audience's left. A projector on the centre line joins one
+side. Projectors that all stand in one line from front to back have no left
+and right, so they get **Auto A** and **Auto B** (odd and even) instead.
 
 What Auto does with the song:
 
@@ -85,6 +106,18 @@ What Auto does with the song:
 - Builds rise, then drop to a dark beat just before the drop.
 - Drops hit with every projector in unison, a flash and a pop.
 - The biggest drop gets the best.
+- **Sweeps move the pictures**: up while the sound brightens, down while it
+  dulls, back to the middle when it settles. On the timeline this is a
+  **Position Y** curve on each cue. Reshape it or delete it like any other
+  curve.
+- **A sound on one side changes only that side.** Its look is swapped for a
+  short, brighter accent cue, then comes back when the sound returns to the
+  middle. The other side carries on untouched. With one projector, or with
+  **Pairs** off, the picture leans towards the sound instead (a
+  **Position X** curve).
+- With **Change** on **With the music**, how long a look lasts follows the
+  song's pace: a slow song gets fewer bars per look, so looks change about
+  as often as in a fast one.
 
 **Generate a new take** writes a fresh variation. It **replaces the earlier
 Auto tracks, including any edits you made to them**. Ctrl+Z undoes a
@@ -105,8 +138,14 @@ In **Live**, the **Auto** pad (or **A**) hands the lasers to the music.
   tracks. **Fixture looks keep playing** from the timeline.
 - Live Auto keeps its own beat clock, so it carries on with the timeline
   stopped. If it hears nothing, it follows the beat from the BPM.
+- Live Auto **follows sweeps** too: the pictures glide up and down as the
+  sound gets brighter or duller.
+- It **follows sides** for the loaded song: a sound on one side changes
+  only that side's projectors, or leans the picture when there's one
+  projector or **Pairs** is off. A microphone or line-in is followed for
+  sweeps only.
 - In Live, the settings show Intensity in Simple mode, and also Change,
-  Colours, Patterns and Pairs in Pro mode.
+  Colours, Patterns, Pairs, Follow sweeps and Follow sides in Pro mode.
 
 Turning Auto on or off is a performance control, like the masters, so it
 isn't undone. Changing a setting is saved with the show.

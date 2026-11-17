@@ -36,13 +36,33 @@ The song isn't stored in the show file. Load the same song again in Program
 with **Load song**. The message shown on opening names the file.
 
 **The bar lines don't match the beat.**
-The detected tempo is off. Type the right BPM in the top bar. If the first
-beat isn't at 0:00, set **First beat at** in the show inspector (Pro: click
-empty timeline space).
+The detected tempo is off. If the grid runs twice or half as fast as you
+count, press **×2** or **÷2** next to the BPM in the top bar. Otherwise
+type the right BPM there. If the lines sit between the beats, or bar 1 is
+on the wrong beat, set **Bar 1 starts at** in the show inspector (Pro:
+click empty timeline space).
 
 **Auto found the wrong sections.**
-First check the BPM. Then click the wrong sections in the Pregenerate dialog
-and change their type or mood (see [Auto](07-auto.md#correcting-the-sections)).
+First check the BPM: bars that look twice too long or too short need **÷2**
+or **×2**. Then click the wrong sections in the Pregenerate dialog and
+change their type or mood (see [Auto](07-auto.md#correcting-the-sections)).
+
+**Auto changes the wrong side for a sound on the left or right.**
+Left and right are the audience's: standing in front of the stage, facing
+the projectors (the view the app opens with). The left channel of the song
+is the audience's left. If your projectors all stand in one line from
+front to back, there is no left and right to follow; Auto splits them odd
+and even instead.
+
+**Auto doesn't follow sounds on one side.**
+The song has to be stereo, **Follow sides** has to be on, and only sounds
+that sit clearly to one side count (the Pregenerate dialog shows them as
+ticks under the chart). Live Auto follows sides for the loaded song only,
+not for **Sound input**.
+
+**The pictures drift up and down and I don't want that.**
+That's **Follow sweeps**. Turn it off in the Auto settings, or delete the
+**Position Y** curve from single cues.
 
 **Live Auto says "No sound from the input".**
 Check that Windows lets the app use the microphone (Settings → Privacy →

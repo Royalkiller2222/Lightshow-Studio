@@ -75,7 +75,10 @@ export class Popover {
 // ---- toasts ----
 let toastBox = null;
 
-/** Brief notification at the bottom of the window. kind: 'info' | 'ok' | 'error'. */
+/**
+ * Brief notification at the bottom of the window. kind: 'info' | 'ok' | 'error'.
+ * Returns a function that closes it early (for "working…" messages).
+ */
 export function toast(message, { kind = 'info', ms = 3200 } = {}) {
   if (!toastBox) {
     toastBox = document.createElement('div');
@@ -88,8 +91,13 @@ export function toast(message, { kind = 'info', ms = 3200 } = {}) {
   t.className = `toast ${kind}`;
   t.innerHTML = esc(message);
   toastBox.appendChild(t);
-  setTimeout(() => {
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
     t.classList.add('out');
     setTimeout(() => t.remove(), 250);
-  }, ms);
+  };
+  setTimeout(close, ms);
+  return close;
 }
